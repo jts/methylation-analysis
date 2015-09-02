@@ -187,11 +187,11 @@ read_bisulfite_scores_file <- function(filename) {
     return(read.table(filename, col.names=c("key", "bisulfite_depth", "bisulfite_percent_methylated", "gene")))
 }
 
-human_cpg_island_plot <- function() {
+human_cpg_island_plot <- function(bisulfite_file, ont_file) {
     require(ggplot2)
 
-    ont <- read_ont_scores_file("ProHum20kb.ont_score.cpg_islands")
-    bisulfite <- read_bisulfite_scores_file("NA12878.bisulfite_score.cpg_islands")
+    ont <- read_ont_scores_file(ont_file)
+    bisulfite <- read_bisulfite_scores_file(bisulfite_file)
 
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
@@ -255,7 +255,9 @@ make_mers <- function(n) {
 #
 # Main, when called from Rscript
 #
-command = commandArgs(TRUE)[1]
+args <- commandArgs(TRUE)
+command = args[1]
+
 if(! interactive()) {
     if(command == "training_plots") {
         make_training_plots()
@@ -264,6 +266,6 @@ if(! interactive()) {
     } else if(command == "read_classification_plot") {
         read_classification_plot()
     } else if(command == "human_cpg_island_plot") {
-        human_cpg_island_plot()
+        human_cpg_island_plot(args[2], args[3])
     }
 }

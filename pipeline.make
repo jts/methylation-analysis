@@ -232,6 +232,6 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
         python $(ROOT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
 
 human_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands ProHum20kb.ont_score.cpg_islands
-	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot
+	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^
 	cp $@ $@.$(NOW)
 
