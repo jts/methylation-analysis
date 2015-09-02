@@ -187,10 +187,10 @@ read_bisulfite_scores_file <- function(filename) {
     return(read.table(filename, col.names=c("key", "bisulfite_depth", "bisulfite_percent_methylated", "gene")))
 }
 
-human_cpg_island_plot <- function(bisulfite_file, ont_file) {
+human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     require(ggplot2)
 
-    ont <- read_ont_scores_file(ont_file)
+    ont <- read_ont_scores_file(nanopore_file)
     bisulfite <- read_bisulfite_scores_file(bisulfite_file)
 
     # merge the data sets together on the common Cpg island key
@@ -201,7 +201,7 @@ human_cpg_island_plot <- function(bisulfite_file, ont_file) {
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
         ylab("P(methylated | ONT)") +
         ggtitle("Methylation signal at CpG Islands")
-   ggsave("human_cpg_island_plot.pdf", width=10,height=10)
+   ggsave(out_file, width=10,height=10)
 }
 
 # Plot multiple 5-mers on a single plot
@@ -266,6 +266,6 @@ if(! interactive()) {
     } else if(command == "read_classification_plot") {
         read_classification_plot()
     } else if(command == "human_cpg_island_plot") {
-        human_cpg_island_plot(args[2], args[3])
+        human_cpg_island_plot(args[2], args[3], args[4])
     }
 }

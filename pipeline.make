@@ -58,55 +58,66 @@ NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 %.fasta: %.fast5
 	poretools fasta --type 2D $</ > $@
 
-# Index a reference genome with BWA
-%.fasta.bwt: %.fasta bwa.version
-	bwa/bwa index $<
+#
+# Define variables for each data set
+#
+ECOLI_MSSI_DATA=M.SssI.e2925_ecoli.fasta
+ECOLI_CONTROL_DATA=ERX708228.ecoli.fasta
 
-# Set convenience variables for the data we'll use to train the model
-TRAINING_FASTA=M.SssI.e2925_ecoli.fasta
-TRAINING_CONTROL_FASTA=ERX708228.ecoli.fasta
-TRAINING_REFERENCE=ecoli_k12.fasta
+LAMBDA_MSSI_DATA=M.SssI.lambda.fasta
+LAMBDA_CONTROL_DATA=control.lambda.fasta
 
+HUMAN_PROMEGA_DATA=ProHum20kb.fasta
+HUMAN_GIAB_DATA=giab.NA24385.fasta
+
+# For each data set that we use, define a variable containing its reference
+$(ECOLI_MSSI_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_CONTROL_DATA)_REFERENCE=ecoli_k12.fasta
+
+$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.fasta
+$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.fasta
+
+$(HUMAN_PROMEGA_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
+
+#
+# These variables control which datasets are used to train the model, test, etc
+#
+TRAINING_FASTA=$(ECOLI_MSSI_DATA)
+TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
+
+TEST_FASTA=$(LAMBDA_MSSI_DATA)
+TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
+
+#
+# These are derived convenience variables and should not be manually set
+# 
+# Derive dependent file names
+TRAINING_REFERENCE=$($(TRAINING_FASTA)_REFERENCE)
 TRAINING_BAM=$(TRAINING_FASTA:.fasta=.sorted.bam)
 TRAINING_CONTROL_BAM=$(TRAINING_CONTROL_FASTA:.fasta=.sorted.bam)
 
-# ...and for the test data
-TEST_FASTA=M.SssI.lambda.fasta
-TEST_CONTROL_FASTA=control.lambda.fasta
-TEST_REFERENCE=lambda.reference.fasta
-
+TEST_REFERENCE=$($(TEST_FASTA)_REFERENCE)
 TEST_BAM=$(TEST_FASTA:.fasta=.sorted.bam)
 TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 ##################################################
 #
-# Step 2. Align each data set to its reference
+# Step 2. Align each data set to a reference
 #
 ##################################################
 
-# lambda data sets
-%.lambda.sorted.bam: %.lambda.fasta lambda.reference.fasta lambda.reference.fasta.bwt bwa.version samtools.version
-	make -f $(ROOT_DIR)/alignment.make OUTPUT=$@ \
-                                       READS=$< \
-                                       REFERENCE=lambda.reference.fasta \
-                                       THREADS=$(THREADS) \
-                                       BWA=bwa/bwa \
-                                       SAMTOOLS=samtools/samtools
+# Index a reference genome with BWA
+%.fasta.bwt: %.fasta bwa.version
+	bwa/bwa index $<
 
-# ecoli data set, we align to K12 since we don't have a e2925 reference
-%ecoli.sorted.bam: %ecoli.fasta ecoli_k12.fasta ecoli_k12.fasta.bwt bwa.version samtools.version
+# We use secondary expansion to construct the name of the variable
+# containing the reference genome for this sample
+.SECONDEXPANSION:
+%.sorted.bam: %.fasta $$(%.fasta_REFERENCE) $$(%.fasta_REFERENCE).bwt bwa.version samtools.version
 	make -f $(ROOT_DIR)/alignment.make OUTPUT=$@ \
                                        READS=$< \
-                                       REFERENCE=ecoli_k12.fasta \
-                                       THREADS=$(THREADS) \
-                                       BWA=bwa/bwa \
-                                       SAMTOOLS=samtools/samtools
-
-# human data set 
-ProHum20kb.sorted.bam: ProHum20kb.fasta human_g1k_v37.fasta human_g1k_v37.fasta.bwt bwa.version samtools.version
-	make -f $(ROOT_DIR)/alignment.make OUTPUT=$@ \
-                                       READS=$< \
-                                       REFERENCE=human_g1k_v37.fasta \
+                                       REFERENCE=$($*.fasta_REFERENCE) \
                                        THREADS=$(THREADS) \
                                        BWA=bwa/bwa \
                                        SAMTOOLS=samtools/samtools
@@ -165,13 +176,15 @@ training_plots.pdf: r7.3_template_median68pA.model.methyltrain $(TRAINING_CONTRO
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest: % %.bai $(TEST_REFERENCE) trained_methyl_models.fofn
+%.methyltest: % %.bai trained_methyl_models.fofn
 	$(eval TMP_BAM := $<)
+	$(eval TMP_FASTA := $(TMP_BAM:.sorted.bam=.fasta))
+	$(eval TMP_REF := $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t 1 \
                                       -m trained_methyl_models.fofn \
                                       -b $(TMP_BAM) \
-                                      -r $(TMP_BAM:.sorted.bam=.fasta) \
-                                      -g $(TEST_REFERENCE) > $@
+                                      -r $(TMP_FASTA) \
+                                      -g $(TMP_REF) > $@
 
 %.sites: %
 	grep SITE $< > $@
@@ -203,35 +216,27 @@ irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstr
 	bedtools/bin/bedtools map -o first -c 4 -a <(cat irizarry.cpg_islands.bed | bedtools/bin/bedtools sort) \
                                             -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) > $@
 
+
 # Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
 ENCFF257GGV.bed:
 	wget https://www.encodeproject.org/files/ENCFF257GGV/@@download/ENCFF257GGV.bed.gz
 	gunzip ENCFF257GGV.bed.gz
 
-# Run methyltest on the human data to score CpG sites
-ProHum20kb.sorted.bam.methyltest: ProHum20kb.sorted.bam ProHum20kb.sorted.bam.bai trained_methyl_models.fofn
-	$(eval TMP_BAM := $<)
-	nanopolish/nanopolish methyltest  -t 1 \
-                                      -m trained_methyl_models.fofn \
-                                      -b $(TMP_BAM) \
-                                      -r $(TMP_BAM:.sorted.bam=.fasta) \
-                                      -g human_g1k_v37.fasta > $@
-
-# Extract the CpG sites to a bed file
-ProHum20kb.sorted.bam.methyltest.sites.bed: ProHum20kb.sorted.bam.methyltest
-	$(ROOT_DIR)/human_sites_to_bed.sh $< > $@
-
-# Calculate a summary score for each CpG island from the ONT reads
-ProHum20kb.ont_score.cpg_islands: irizarry.cpg_islands.genes.bed ProHum20kb.sorted.bam.methyltest.sites.bed bedtools.version
-	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a ProHum20kb.sorted.bam.methyltest.sites.bed | \
-        python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py > $@
-
-# Calculate a summary score for each CpG island from the bisulfite data
+# Calculate a summary data for each CpG island from the bisulfite data
 NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.bed bedtools.version
 	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a ENCFF257GGV.bed | \
         python $(ROOT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
 
-human_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands ProHum20kb.ont_score.cpg_islands
-	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^
+# Extract the CpG sites to a bed file
+%.sorted.bam.methyltest.sites.bed: %.sorted.bam.methyltest
+	$(ROOT_DIR)/human_sites_to_bed.sh $< > $@
+
+# Calculate a summary score for each CpG island from the ONT reads
+%.ont_score.cpg_islands: irizarry.cpg_islands.genes.bed %.sorted.bam.methyltest.sites.bed bedtools.version
+	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a $*.sorted.bam.methyltest.sites.bed | \
+        python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py > $@
+
+%_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
+	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 	cp $@ $@.$(NOW)
 
