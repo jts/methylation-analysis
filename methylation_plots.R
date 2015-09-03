@@ -118,31 +118,31 @@ make_training_plots <- function()
 
 load_site_data <- function(filename, dataset_name)
 {
-    data <- read.table(filename, col.names=c("tag", "chromosome", "start", "end", "sequence", "n_cpg", "unmethylated_score", "methylated_score", "diff"))
+    data <- read.table(filename, header=T)
     data$dataset = dataset_name
     return(data)
 }
 
 load_read_classification_data <- function(filename, dataset_name)
 {
-    data <- read.table(filename, col.names=c("tag", "path", "score", "n_cpg"))
+    data <- read.table(filename, header=T)
     data$dataset = dataset_name
     return(data)
 }
 
 #
-# Plot the histogram of scores from a SITES file from methyltest
+# Plot the histogram of scores from a sites.tsv
 #
 site_histogram <- function(in_kmer, dataset) {
     require(plyr)
     require(ggplot2)
     
-    sub <- subset(dataset, sequence == in_kmer)
+    sub <- subset(dataset, SEQUENCE == in_kmer)
     
     # hack, give at least one row
     sub <- rbind(sub, dataset[1,])
 
-    p1 <- ggplot(sub, aes(diff)) + 
+    p1 <- ggplot(sub, aes(LL_RATIO)) + 
             geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
             xlim(-10, 10) +
             ggtitle(in_kmer)
@@ -150,9 +150,9 @@ site_histogram <- function(in_kmer, dataset) {
     return(p1)
 }
 
-site_likelihood_plots <- function() {
-    data <- load_site_data("M.SssI.lambda.sorted.bam.methyltest.sites", "methylated")
-    pdf("site_likelihood_plots.pdf", 32, 16)
+site_likelihood_plots <- function(in_file, out_file) {
+    data <- load_site_data(in_file, "methylated")
+    pdf(out_file, 32, 16)
     
     # CG in the last position
     kmers = make_context_mers("CG", 3, 0)
@@ -164,27 +164,26 @@ site_likelihood_plots <- function() {
     dev.off()
 }
 
-read_classification_plot <- function() {
+read_classification_plot <- function(m_file, c_file, out_file) {
     require(ggplot2)
-    m_data <- load_read_classification_data("M.SssI.lambda.sorted.bam.methyltest.read", "methylated")
-    c_data <- load_read_classification_data("control.lambda.sorted.bam.methyltest.read", "unmethylated")
+    m_data <- load_read_classification_data(m_file, "methylated")
+    c_data <- load_read_classification_data(c_file, "unmethylated")
     all <- rbind(m_data, c_data)
 
-    #ggplot(all, aes(score / n_cpg, color=dataset)) + geom_density(alpha=0.5)
-    p <- ggplot(all, aes(n_cpg, score, color=dataset)) + geom_point()
+    p <- ggplot(all, aes(n_cpg, sum_ll_ratio, color=dataset)) + geom_point()
 
-    ggsave("read_classification_plot.pdf", p)
+    ggsave(out_file, p)
 }
 
 #
 # Human analysis plots
 #
 read_ont_scores_file <- function(filename) { 
-    return(read.table(filename, col.names=c("key", "n_ont_sites", "ont_score", "gene")))
+    return(read.table(filename, header=T))
 }
 
 read_bisulfite_scores_file <- function(filename) {
-    return(read.table(filename, col.names=c("key", "bisulfite_depth", "bisulfite_percent_methylated", "gene")))
+    return(read.table(filename, header=T))
 }
 
 human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
@@ -196,7 +195,7 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$near_gene = merged$gene.x != "."
-    ggplot(merged, aes(bisulfite_percent_methylated, 1 / (1 + exp(-ont_score / n_ont_sites)), color=near_gene)) + 
+    ggplot(merged, aes(bisulfite_percent_methylated, 1 / (1 + exp(-sum_ll_ratio / n_ont_sites)), color=near_gene)) + 
         geom_point() +
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
         ylab("P(methylated | ONT)") +
@@ -262,9 +261,9 @@ if(! interactive()) {
     if(command == "training_plots") {
         make_training_plots()
     } else if(command == "site_likelihood_plots") {
-        site_likelihood_plots()
+        site_likelihood_plots(args[2], args[3])
     } else if(command == "read_classification_plot") {
-        read_classification_plot()
+        read_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
     }

@@ -74,8 +74,8 @@ HUMAN_GIAB_DATA=giab.NA24385.fasta
 $(ECOLI_MSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_CONTROL_DATA)_REFERENCE=ecoli_k12.fasta
 
-$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.fasta
-$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.fasta
+$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
+$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
 
 $(HUMAN_PROMEGA_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
@@ -176,28 +176,26 @@ training_plots.pdf: r7.3_template_median68pA.model.methyltrain $(TRAINING_CONTRO
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest: % %.bai trained_methyl_models.fofn
-	$(eval TMP_BAM := $<)
-	$(eval TMP_FASTA := $(TMP_BAM:.sorted.bam=.fasta))
-	$(eval TMP_REF := $($(TMP_FASTA)_REFERENCE))
+%.methyltest.sites.bed %.methyltest.reads.tsv: % %.bai trained_methyl_models.fofn
+	$(eval TMP_BAM = $<)
+	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
+	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t 1 \
                                       -m trained_methyl_models.fofn \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
-                                      -g $(TMP_REF) > $@
+                                      -g $(TMP_REF)
 
-%.sites: %
-	grep SITE $< > $@
+# Convert a site BED file into a tsv file for R
+%.methyltest.sites.tsv: %.methyltest.sites.bed
+	cat $< | python $(ROOT_DIR)/annotated_bed_to_tsv.py > $@
 
-%.read: %
-	grep READ $< > $@
-
-site_likelihood_plots.pdf: M.SssI.lambda.sorted.bam.methyltest.sites
-	Rscript $(ROOT_DIR)/methylation_plots.R site_likelihood_plots
+site_likelihood_plots.pdf: $(TEST_BAM).methyltest.sites.tsv
+	Rscript $(ROOT_DIR)/methylation_plots.R site_likelihood_plots $< $@
 	cp $@ $@.$(NOW)
 
-read_classification_plot.pdf: M.SssI.lambda.sorted.bam.methyltest.read control.lambda.sorted.bam.methyltest.read
-	Rscript $(ROOT_DIR)/methylation_plots.R read_classification_plot
+read_classification_plot.pdf: $(TEST_BAM).methyltest.reads.tsv $(TEST_CONTROL_BAM).methyltest.reads.tsv
+	Rscript $(ROOT_DIR)/methylation_plots.R read_classification_plot $^ $@
 	cp $@ $@.$(NOW)
 
 ##################################################
@@ -209,12 +207,13 @@ read_classification_plot.pdf: M.SssI.lambda.sorted.bam.methyltest.read control.l
 # Download database of CpG islands from Irizarry's method
 irizarry.cpg_islands.bed:
 	wget http://rafalab.jhsph.edu/CGI/model-based-cpg-islands-hg19.txt
-	cat model-based-cpg-islands-hg19.txt | grep -v length > $@
+	cat model-based-cpg-islands-hg19.txt | python $(ROOT_DIR)/tsv_to_annotated_bed.py > $@
 
 # Annotate the CpG islands with whether they are <= 2kb upstream of a gene
 irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed
 	bedtools/bin/bedtools map -o first -c 4 -a <(cat irizarry.cpg_islands.bed | bedtools/bin/bedtools sort) \
-                                            -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) > $@
+                                            -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) | \
+                                            awk '{ print $$1 "\t" $$2 "\t" $$3 "\t" $$4 ";Gene=" $$5 }' > $@
 
 
 # Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
