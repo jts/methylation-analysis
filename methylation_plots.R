@@ -191,7 +191,6 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
 
     ont <- read_ont_scores_file(nanopore_file)
     bisulfite <- read_bisulfite_scores_file(bisulfite_file)
-
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$near_gene = merged$gene.x != "."
@@ -200,7 +199,17 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
         ylab("P(methylated | ONT)") +
         ggtitle("Methylation signal at CpG Islands")
+
+
    ggsave(out_file, width=10,height=10)
+
+   # plot histograms
+   p1 <- ggplot(ont, aes(100 * (1 / (1 + exp(-sum_ll_ratio / n_ont_sites))), fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
+   #p1 <- ggplot(ont, aes(sum_posterior / n_ont_sites, fill=gene != ".")) + geom_density(alpha=0.5)
+   p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
+   pdf("histogram.pdf")
+   multiplot(plotlist=list(p1, p2), cols=1)
+   dev.off()
 }
 
 # Plot multiple 5-mers on a single plot

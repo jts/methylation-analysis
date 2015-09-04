@@ -226,13 +226,10 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a ENCFF257GGV.bed | \
         python $(ROOT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
 
-# Extract the CpG sites to a bed file
-%.sorted.bam.methyltest.sites.bed: %.sorted.bam.methyltest
-	$(ROOT_DIR)/human_sites_to_bed.sh $< > $@
-
 # Calculate a summary score for each CpG island from the ONT reads
 %.ont_score.cpg_islands: irizarry.cpg_islands.genes.bed %.sorted.bam.methyltest.sites.bed bedtools.version
-	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a $*.sorted.bam.methyltest.sites.bed | \
+	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed \
+                                        -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
         python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py > $@
 
 %_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
