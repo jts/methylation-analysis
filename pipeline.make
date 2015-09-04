@@ -48,6 +48,9 @@ bedtools.version:
 # http://stackoverflow.com/questions/12463770/insert-time-stamp-into-executable-name-using-makefile
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
+.DEFAULT_GOAL := all
+all: training_plots.pdf site_likelihood_plots.pdf read_classification_plot.pdf ProHum20kb_cpg_island_plot.pdf
+
 ##################################################
 #
 # Step 1. Prepare input data 
