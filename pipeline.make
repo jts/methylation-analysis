@@ -88,6 +88,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-70000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -138,34 +139,44 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py $< > $@
 
+# Pretrain a model on unmethylated data to make the emissions better fit our HMM
+r7.3_template_median68pA.model.pretrain.methyltrain \
+r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
+r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --train-unmethylated \
+                                      --out-suffix ".pretrain.methyltrain" \
+                                      -m initial_pretrain_models.fofn \
+                                      -b $(TRAINING_CONTROL_BAM) \
+                                      -r $(TRAINING_CONTROL_FASTA) \
+                                      -g $(TRAINING_REFERENCE) \
+                                      -w $(TRAINING_REGION) 
+
 # Initialize methylation models from the base models
-%.model.initial_methyl: %.model
+%.model.pretrain: %.model
 	python $(ROOT_DIR)/methylate_model.py $< > $@
 
-# Make a fofn of the initialized methylation models    
-initial_methyl_models.fofn: r7.3_template_median68pA.model.initial_methyl r7.3_complement_median68pA_pop1.model.initial_methyl r7.3_complement_median68pA_pop2.model.initial_methyl
+# Make a fofn of the initialized pretrain models
+initial_pretrain_models.fofn: r7.3_template_median68pA.model.pretrain \
+                              r7.3_complement_median68pA_pop1.model.pretrain \
+                              r7.3_complement_median68pA_pop2.model.pretrain
 	echo $^ | tr " " "\n" > $@
 
-# As a side effect of this program, we get trained methylation model in the *.methyltrain files
-r7.3_template_median68pA.model.methyltrain \
-r7.3_complement_median68pA_pop1.model.methyltrain \
-r7.3_complement_median68pA_pop2.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+%.model.pretrain.initial_methyl: %.model.pretrain.methyltrain
+	python $(ROOT_DIR)/methylate_model.py $< > $@
+
+# Make a fofn of the initialized methylation from the pretrain models    
+initial_methyl_models.fofn: r7.3_template_median68pA.model.pretrain.initial_methyl r7.3_complement_median68pA_pop1.model.pretrain.initial_methyl r7.3_complement_median68pA_pop2.model.pretrain.initial_methyl
+	echo $^ | tr " " "\n" > $@
+
+# Train the model with methylated 5-mers
+r7.3_template_median68pA.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       -m initial_methyl_models.fofn \
                                       -b $(TRAINING_BAM) \
                                       -r $(TRAINING_FASTA) \
                                       -g $(TRAINING_REFERENCE).methylated \
-                                      -w "gi|556503834|ref|NC_000913.3|:50000-70000"
-
-# Run methyltrain on unmethylated data to get data to compare to
-$(TRAINING_CONTROL_BAM).methyltrain.0.tsv: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_CONTROL_FASTA) $(TRAINING_REFERENCE) initial_methyl_models.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
-                                      -m initial_methyl_models.fofn \
-                                      --no-update-models \
-                                      -b $(TRAINING_CONTROL_BAM) \
-                                      -r $(TRAINING_CONTROL_FASTA) \
-                                      -g $(TRAINING_REFERENCE) \
-                                      -w "gi|556503834|ref|NC_000913.3|:50000-70000"
+                                      -w $(TRAINING_REGION)
 
 # Make a fofn of the trained methylation models 
 trained_methyl_models.fofn: r7.3_template_median68pA.model.methyltrain r7.3_complement_median68pA_pop1.model.methyltrain r7.3_complement_median68pA_pop2.model.methyltrain
@@ -215,7 +226,7 @@ irizarry.cpg_islands.bed:
 	cat model-based-cpg-islands-hg19.txt | python $(ROOT_DIR)/tsv_to_annotated_bed.py > $@
 
 # Annotate the CpG islands with whether they are <= 2kb upstream of a gene
-irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed
+irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed bedtools.version
 	bedtools/bin/bedtools map -o first -c 4 -a <(cat irizarry.cpg_islands.bed | bedtools/bin/bedtools sort) \
                                             -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) | \
                                             awk '{ print $$1 "\t" $$2 "\t" $$3 "\t" $$4 ";Gene=" $$5 }' > $@
@@ -240,4 +251,5 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 %_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
 	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 	cp $@ $@.$(NOW)
+	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 

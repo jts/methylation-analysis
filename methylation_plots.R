@@ -43,26 +43,36 @@ SUBSET2 <- function(dat, ex) {
 #
 load_training_data <- function(filename, dataset_name)
 {
+    require(data.table)
     data <- read.table(filename, header=T)
     data$dataset = dataset_name
-    return(data)
+    
+    in_model = "r7.3_template_median68pA.model"
+    tbl = data.table(subset(data, model == in_model))
+    
+    setkey(tbl, model_kmer)
+    return(tbl)
 }
 
-plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data)
+plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params)
 {
     require(plyr)
     require(ggplot2)
 
-    in_model = "r7.3_template_median68pA.model"
-    
     # Convert Ms in the kmer to Cs for the control data
     c_kmer <- gsub("M", "C", m_kmer)
 
     # subset to the required kmers
-    u_subset <- subset(unmethylated_data, model_kmer == c_kmer & model == in_model)
-    m_subset <- subset(methylated_data, model_kmer == m_kmer & model == in_model)
+    u_subset <- unmethylated_data[c_kmer]
+    m_subset <- methylated_data[m_kmer]
 
-    # append the kmer name to the dataset
+    # get the gaussian parmeters for these kmers
+    c_mean = subset(params, kmer == c_kmer)[1,]$level_mean
+    c_stdv = subset(params, kmer == c_kmer)[1,]$level_stdv
+    
+    m_mean = subset(params, kmer == m_kmer)[1,]$level_mean
+    m_stdv = subset(params, kmer == m_kmer)[1,]$level_stdv
+
     if(nrow(u_subset) > 0) {
         u_subset$dataset = paste(u_subset$dataset, c_kmer)
     }
@@ -78,6 +88,8 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     p <- ggplot(all, aes(event_mean, fill=dataset)) + 
             #geom_density(alpha=0.5) +
             geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
+            stat_function(fun = dnorm, colour="red", arg=list(mean=m_mean, sd=m_stdv)) + 
+            stat_function(fun = dnorm, arg=list(mean=c_mean, sd=c_stdv)) + 
             ggtitle(paste("event mean current", m_kmer))
     return(p)
 }
@@ -86,6 +98,7 @@ make_training_plots <- function()
 {
     control_training <- load_training_data("ERX708228.ecoli.sorted.bam.methyltrain.0.tsv", "unmethylated")
     methylated_training <- load_training_data("M.SssI.e2925_ecoli.sorted.bam.methyltrain.9.tsv", "methylated")
+    params <- read.table("r7.3_template_median68pA.model.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
     
     pdf("training_plots.pdf", 48, 16)
     
@@ -93,7 +106,8 @@ make_training_plots <- function()
     kmers = make_context_mers("MG", 3, 0)
     plots = c()
     for(i in 1:length(kmers)) {
-        plots[[i]] = plot_event_means_for_kmer(kmers[[i]], control_training, methylated_training)
+        print(kmers[[i]])
+        plots[[i]] = plot_event_means_for_kmer(kmers[[i]], control_training, methylated_training, params)
     }
 
     multiplot(plotlist=plots, cols=8)
@@ -105,10 +119,26 @@ make_training_plots <- function()
     kmers = make_context_mers("GG", 3, 0)
     plots = c()
     for(i in 1:length(kmers)) {
-        plots[[i]] = plot_event_means_for_kmer(kmers[[i]], control_training, methylated_training)
+        plots[[i]] = plot_event_means_for_kmer(kmers[[i]], control_training, methylated_training, params)
     }
 
     multiplot(plotlist=plots, cols=8)
+    dev.off()
+
+    pdf("training_all_m_mers.pdf")
+    #kmers = make_context_mers("MG", 3, 0)
+    kmers <- make_context_mers("", 5, 0, c('A', 'C', 'G', 'M', 'T'))
+    for(i in 1:length(kmers)) {
+        curr <- kmers[[i]]
+        if(length( grep("M", curr) ) > 0) {
+            if(nrow(methylated_training[curr]) > 100) {
+                print(curr)
+                print(nrow(methylated_training[ curr ]))
+                p <- plot_event_means_for_kmer(curr, control_training, methylated_training, params)
+                multiplot(p, cols=1)
+            }
+        }
+    }
     dev.off()
 }
 
@@ -224,10 +254,10 @@ site_multiplot <- function(kmers, ...) {
 #
 # Utility functions for generating kmers
 #
-make_context_mers <- function(context, n_bases_before, n_bases_after) {
+make_context_mers <- function(context, n_bases_before, n_bases_after, alphabet=c('A', 'C', 'G', 'T')) {
 
-    prefix = make_mers(n_bases_before)
-    suffix = make_mers(n_bases_after)
+    prefix = make_mers(n_bases_before, alphabet)
+    suffix = make_mers(n_bases_after, alphabet)
     out = c()
     for(p in prefix) {
         for(s in suffix) {
@@ -237,25 +267,24 @@ make_context_mers <- function(context, n_bases_before, n_bases_after) {
     return(out)
 }
 
-add_bases <- function(strings) {
-    bases = c('A', 'C', 'G', 'T')
+add_bases <- function(strings, alphabet) {
     out = c()
     for(s in strings) {
-        for(b in bases) {
+        for(b in alphabet) {
             out = c(out, paste(s,b, sep='')) # ya i know
         }
     }
     return(out)
 }
 
-make_mers <- function(n) {
+make_mers <- function(n, alphabet) {
     l = c("")
     if(n == 0) {
         return(l)   
     }
     
     for(i in 1:n) {
-        l = add_bases(l)
+        l = add_bases(l, alphabet)
     }
     return(l)
 }
