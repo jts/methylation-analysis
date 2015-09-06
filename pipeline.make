@@ -35,7 +35,8 @@ bwa.version:
 
 # Install python libs
 pythonlibs.version:
-	pip install biopython >> $@
+	pip install --user biopython >> $@
+	pip install --user h5py >> $@
 	pip freeze >> $@
 
 # Install bedtools
@@ -57,9 +58,9 @@ all: training_plots.pdf site_likelihood_plots.pdf read_classification_plot.pdf P
 #
 ##################################################
 
-# Convert a directory of FAST5 files to fasta using poretools
+# Convert a directory of FAST5 files to fasta using readtofasta.py
 %.fasta: %.fast5
-	poretools fasta --type 2D $</ > $@
+	python $(ROOT_DIR)/readtofasta.py --calls 2D $</ > $@
 
 #
 # Define variables for each data set
