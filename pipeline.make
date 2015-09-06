@@ -213,7 +213,7 @@ irizarry.cpg_islands.bed:
 	cat model-based-cpg-islands-hg19.txt | python $(ROOT_DIR)/tsv_to_annotated_bed.py > $@
 
 # Annotate the CpG islands with whether they are <= 2kb upstream of a gene
-irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed
+irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed bedtools.version
 	bedtools/bin/bedtools map -o first -c 4 -a <(cat irizarry.cpg_islands.bed | bedtools/bin/bedtools sort) \
                                             -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) | \
                                             awk '{ print $$1 "\t" $$2 "\t" $$3 "\t" $$4 ";Gene=" $$5 }' > $@
