@@ -156,7 +156,7 @@ r7.3_template_median68pA.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=
                                       -w "gi|556503834|ref|NC_000913.3|:50000-70000"
 
 # Run methyltrain on unmethylated data to get data to compare to
-$(TRAINING_CONTROL_BAM).training.0.tsv: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_CONTROL_FASTA) $(TRAINING_REFERENCE) initial_methyl_models.fofn
+$(TRAINING_CONTROL_BAM).training.0.tsv $(TRAINING_CONTROL_BAM).methyltrain.0.tsv : $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_CONTROL_FASTA) $(TRAINING_REFERENCE) initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       -m initial_methyl_models.fofn \
                                       --no-update-models \
