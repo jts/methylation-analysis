@@ -35,8 +35,8 @@ bwa.version:
 
 # Install python libs
 pythonlibs.version:
-	pip install biopython >> $@
-	pip install h5py >> $@
+	pip install --user biopython >> $@
+	pip install --user h5py >> $@
 	pip freeze >> $@
 
 # Install bedtools
