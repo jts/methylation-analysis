@@ -242,6 +242,47 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
    dev.off()
 }
 
+#
+# Global methylation analysis
+#
+global_methylation_plot <- function(outfile, ...) {
+    require(ggplot2)
+    require(tools)
+    require(stringr)
+
+    files = list(...)
+    
+    all <- NULL
+    for(f in files[[1]]) {
+        
+        suf_pos = str_locate(f, ".sorted.bam.methyltest.sites.tsv")
+
+        base = str_sub(f, 0, suf_pos[,1] - 1)
+        
+        d <- load_site_data(f, base)
+
+        # Calculate posterior probabilty the site is methylated
+        d$posterior = 1 / (1 + exp(-d$LL_RATIO))
+
+        # Get genome-wide average methylation
+        avg = mean(d$posterior)
+        
+        # Reset dataset name to include average
+        d$dataset = sprintf("%s (avg 5mC: %.2f)", base, avg)
+
+        if(is.null(all)) {
+            all = d
+        } else {
+            all = rbind(all, d)
+        }
+    }
+
+    print(head(all))
+    #ggplot(all, aes((1 / (1 + exp(-LL_RATIO))), fill=dataset)) + geom_histogram(position="identity", binwidth = 0.04, alpha=0.5)
+    ggplot(all, aes(posterior, fill=dataset)) + geom_density(alpha=0.5) + xlab("P(methylated | D)")
+    ggsave(outfile)
+}
+
 # Plot multiple 5-mers on a single plot
 site_multiplot <- function(kmers, ...) {
     plots = c()
@@ -304,5 +345,8 @@ if(! interactive()) {
         read_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
+    } else if(command == "global_methylation") {
+        outfile = args[length(args)]
+        global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))
     }
 }

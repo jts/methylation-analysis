@@ -207,7 +207,7 @@ training_plots.pdf: r7.3_template_median68pA.model.methyltrain $(TRAINING_CONTRO
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
-	nanopolish/nanopolish methyltest  -t 1 \
+	nanopolish/nanopolish methyltest  -t $(THREADS) \
                                       -m trained_methyl_models.fofn \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
@@ -264,3 +264,11 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 	cp $@ $@.$(NOW)
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 
+##################################################
+#
+# Step 6. Global methylation analysis
+#
+##################################################
+global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv M.SssI.lambda.sorted.bam.methyltest.sites.tsv
+	Rscript $(ROOT_DIR)/methylation_plots.R global_methylation $^ $@
+	cp $@ $@.$(NOW).pdf
