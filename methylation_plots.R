@@ -47,7 +47,7 @@ load_training_data <- function(filename, dataset_name)
     data <- read.table(filename, header=T)
     data$dataset = dataset_name
     
-    in_model = "r7.3_template_median68pA.model"
+    in_model = "t"
     tbl = data.table(subset(data, model == in_model))
     
     setkey(tbl, model_kmer)
@@ -85,7 +85,7 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     all <- rbind(u_subset, m_subset)
 
     # plot event means
-    p <- ggplot(all, aes(event_mean, fill=dataset)) + 
+    p <- ggplot(all, aes(level_mean, fill=dataset)) + 
             #geom_density(alpha=0.5) +
             geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
             stat_function(fun = dnorm, colour="red", arg=list(mean=m_mean, sd=m_stdv)) + 
@@ -94,39 +94,103 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     return(p)
 }
 
-make_training_plots <- function()
+plot_event_stdv_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params)
 {
-    control_training <- load_training_data("ERX708228.ecoli.sorted.bam.methyltrain.0.tsv", "unmethylated")
-    methylated_training <- load_training_data("M.SssI.e2925_ecoli.sorted.bam.methyltrain.9.tsv", "methylated")
-    params <- read.table("r7.3_template_median68pA.model.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
+    require(plyr)
+    require(ggplot2)
+    require(statmod)
+
+    # Convert Ms in the kmer to Cs for the control data
+    c_kmer <- gsub("M", "C", m_kmer)
+
+    # subset to the required kmers
+    u_subset <- unmethylated_data[c_kmer]
+    m_subset <- methylated_data[m_kmer]
+
+    # get the gaussian parmeters for these kmers
+    c_sd_mean = subset(params, kmer == c_kmer)[1,]$sd_meana
+    c_sd_stdv = subset(params, kmer == c_kmer)[1,]$sd_stdv
     
-    pdf("training_plots.pdf", 48, 16)
+    m_sd_mean = subset(params, kmer == m_kmer)[1,]$sd_mean
+    m_sd_stdv = subset(params, kmer == m_kmer)[1,]$sd_stdv
+
+    if(nrow(u_subset) > 0) {
+        u_subset$dataset = paste(u_subset$dataset, c_kmer)
+    }
+
+    if(nrow(m_subset) > 0) {
+        m_subset$dataset = paste(m_subset$dataset, m_kmer)
+    }
+
+    # merge the subsetted data into a single data frame
+    all <- rbind(u_subset, m_subset)
+
+    m_ig_lambda = m_sd_mean ** 3 / m_sd_stdv ** 2
+    c_ig_lambda = c_sd_mean ** 3 / c_sd_stdv ** 2
+    # plot event means
+    p <- ggplot(all, aes(level_stdv, fill=dataset)) + 
+            #geom_density(alpha=0.5) +
+            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
+            stat_function(fun = dinvgauss, colour="red", arg=list(mean=m_sd_mean, shape=m_ig_lambda)) + 
+            stat_function(fun = dinvgauss, arg=list(mean=c_sd_mean, shape=c_ig_lambda)) + 
+            ggtitle(paste("event current stdv", m_kmer))
+    return(p)
+}
+
+methylated_stdv_plot <- function(control_training, methylated_training, params) {
+    pdf("training_plots_event_stdv.pdf", 48, 16)
     
-    # CG in the last position
     kmers = make_context_mers("MG", 3, 0)
     plots = c()
     for(i in 1:length(kmers)) {
         print(kmers[[i]])
-        plots[[i]] = plot_event_means_for_kmer(kmers[[i]], control_training, methylated_training, params)
+        plots[[i]] = plot_event_stdv_for_kmer(kmers[[i]], control_training, methylated_training, params)
     }
 
     multiplot(plotlist=plots, cols=8)
     dev.off()
-    
-    pdf("control_training_plots.pdf", 48, 16)
+}
+
+unmethylated_stdv_plot <- function(control_training, methylated_training, params) {
+    pdf("control_training_plots_event_stdv.pdf", 48, 16)
     
     # GG in the last position as a control
     kmers = make_context_mers("GG", 3, 0)
     plots = c()
     for(i in 1:length(kmers)) {
-        plots[[i]] = plot_event_means_for_kmer(kmers[[i]], control_training, methylated_training, params)
+        plots[[i]] = plot_event_stdv_for_kmer(kmers[[i]], control_training, methylated_training, params)
     }
 
     multiplot(plotlist=plots, cols=8)
     dev.off()
+}
 
-    pdf("training_all_m_mers.pdf")
-    #kmers = make_context_mers("MG", 3, 0)
+generate_training_plot <- function(outfile, twomer, control_data, methylated_data, params, plot_func)
+{
+    pdf(outfile, 48, 16)
+    kmers = make_context_mers(twomer, 3, 0)
+    plots = c()
+    for(i in 1:length(kmers)) {
+        print(kmers[[i]])
+        plots[[i]] = plot_func(kmers[[i]], control_data, methylated_data, params)
+    }
+
+    multiplot(plotlist=plots, cols=8)
+    dev.off()
+}
+
+make_training_plots <- function()
+{
+    control_training <- load_training_data("ERX708228.ecoli.sorted.bam.methyltrain.tsv", "unmethylated")
+    methylated_training <- load_training_data("M.SssI.e2925_ecoli.sorted.bam.methyltrain.tsv", "methylated")
+    params <- read.table("r7.3_template_median68pA.model.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
+ 
+    generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
+    generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)
+    
+    generate_training_plot("training_plots_abcMG_event_stdv.pdf", "MG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
+    generate_training_plot("training_plots_abcGG_event_stdv.pdf", "GG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
+
     kmers <- make_context_mers("", 5, 0, c('A', 'C', 'G', 'M', 'T'))
     for(i in 1:length(kmers)) {
         curr <- kmers[[i]]
@@ -252,9 +316,10 @@ global_methylation_plot <- function(outfile, ...) {
 
     files = list(...)
     
-    all <- NULL
-    for(f in files[[1]]) {
+    pl <- list()
+    for(i in 1:length(files[[1]])) {
         
+        f <- files[[1]][[i]]
         suf_pos = str_locate(f, ".sorted.bam.methyltest.sites.tsv")
 
         base = str_sub(f, 0, suf_pos[,1] - 1)
@@ -268,19 +333,17 @@ global_methylation_plot <- function(outfile, ...) {
         avg = mean(d$posterior)
         
         # Reset dataset name to include average
-        d$dataset = sprintf("%s (avg 5mC: %.2f)", base, avg)
+        name <- sprintf("%s (avg 5mC: %.2f)", base, avg)
+        d$dataset = name
 
-        if(is.null(all)) {
-            all = d
-        } else {
-            all = rbind(all, d)
-        }
+        pl[[i]] <- ggplot(subset(d, N_CPG == 1), aes(posterior)) + geom_histogram(binwidth=0.05) + xlab("P(methylated | D)") + ggtitle(name)
     }
-
-    print(head(all))
-    #ggplot(all, aes((1 / (1 + exp(-LL_RATIO))), fill=dataset)) + geom_histogram(position="identity", binwidth = 0.04, alpha=0.5)
-    ggplot(all, aes(posterior, fill=dataset)) + geom_density(alpha=0.5) + xlab("P(methylated | D)")
-    ggsave(outfile)
+    
+    w = 4
+    h = length(pl) * w
+    pdf(outfile, height=h, width=w)
+    multiplot(plotlist=pl, cols=1)
+    dev.off()
 }
 
 # Plot multiple 5-mers on a single plot

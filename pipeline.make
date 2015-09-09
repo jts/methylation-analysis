@@ -89,7 +89,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-700000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-2300000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -145,13 +145,14 @@ r7.3_template_median68pA.model.pretrain.methyltrain \
 r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
 r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --progress \
                                       --train-unmethylated \
                                       --out-suffix ".pretrain.methyltrain" \
                                       -m initial_pretrain_models.fofn \
                                       -b $(TRAINING_CONTROL_BAM) \
                                       -r $(TRAINING_CONTROL_FASTA) \
                                       -g $(TRAINING_REFERENCE) \
-                                      -w $(TRAINING_REGION) 
+                                      $(TRAINING_REGION) 
 
 # Initialize methylation models from the base models
 %.model.pretrain: %.model
@@ -171,30 +172,23 @@ initial_methyl_models.fofn: r7.3_template_median68pA.model.pretrain.initial_meth
 	echo $^ | tr " " "\n" > $@
 
 # Train the model with methylated 5-mers
-r7.3_template_median68pA.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+r7.3_template_median68pA.model.methyltrain \
+r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
+r7.3_complement_median68pA_pop2.model.pretain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --progress \
                                       -m initial_methyl_models.fofn \
                                       -b $(TRAINING_BAM) \
                                       -r $(TRAINING_FASTA) \
                                       -g $(TRAINING_REFERENCE).methylated \
-                                      -w $(TRAINING_REGION)
-
-# Run methyltrain on unmethylated data to get data to compare to
-$(TRAINING_CONTROL_BAM).training.0.tsv $(TRAINING_CONTROL_BAM).methyltrain.0.tsv : $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_CONTROL_FASTA) $(TRAINING_REFERENCE) initial_methyl_models.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
-                                      -m initial_methyl_models.fofn \
-                                      --no-update-models \
-                                      -b $(TRAINING_CONTROL_BAM) \
-                                      -r $(TRAINING_CONTROL_FASTA) \
-                                      -g $(TRAINING_REFERENCE) \
-                                      -w $(TRAINING_REGION)
+                                      $(TRAINING_REGION)
 
 # Make a fofn of the trained methylation models 
 trained_methyl_models.fofn: r7.3_template_median68pA.model.methyltrain r7.3_complement_median68pA_pop1.model.methyltrain r7.3_complement_median68pA_pop2.model.methyltrain
 	echo $^ | tr " " "\n" > $@
 
 # Make training plots
-training_plots.pdf: r7.3_template_median68pA.model.methyltrain $(TRAINING_CONTROL_BAM).methyltrain.0.tsv
+training_plots_abcMG_event_mean.pdf: r7.3_template_median68pA.model.methyltrain $(TRAINING_CONTROL_BAM).methyltrain.0.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R training_plots
 	cp $@ $@.$(NOW)
 
@@ -269,6 +263,6 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 # Step 6. Global methylation analysis
 #
 ##################################################
-global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv M.SssI.lambda.sorted.bam.methyltest.sites.tsv
+global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv giab.NA24385.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv M.SssI.lambda.sorted.bam.methyltest.sites.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R global_methylation $^ $@
 	cp $@ $@.$(NOW).pdf
