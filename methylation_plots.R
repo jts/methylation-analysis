@@ -137,6 +137,38 @@ plot_event_stdv_for_kmer <- function(m_kmer, unmethylated_data, methylated_data,
     return(p)
 }
 
+plot_event_duration_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params)
+{
+    require(plyr)
+    require(ggplot2)
+    require(statmod)
+
+    # Convert Ms in the kmer to Cs for the control data
+    c_kmer <- gsub("M", "C", m_kmer)
+
+    # subset to the required kmers
+    u_subset <- unmethylated_data[c_kmer]
+    m_subset <- methylated_data[m_kmer]
+
+    if(nrow(u_subset) > 0) {
+        u_subset$dataset = paste(u_subset$dataset, c_kmer)
+    }
+
+    if(nrow(m_subset) > 0) {
+        m_subset$dataset = paste(m_subset$dataset, m_kmer)
+    }
+
+    # merge the subsetted data into a single data frame
+    all <- rbind(u_subset, m_subset)
+
+    p <- ggplot(all, aes(duration, fill=dataset)) + 
+            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.02, position="identity") +
+            ggtitle(paste("event duration", m_kmer)) +
+            xlim(0, 0.2)
+    return(p)
+}
+
+
 generate_training_plot <- function(outfile, twomer, control_data, methylated_data, params, plot_func)
 {
     pdf(outfile, 48, 16)
@@ -156,7 +188,7 @@ make_training_plots <- function()
     control_training <- load_training_data("ERX708228.ecoli.sorted.bam.methyltrain.tsv", "unmethylated")
     methylated_training <- load_training_data("M.SssI.e2925_ecoli.sorted.bam.methyltrain.tsv", "methylated")
     params <- read.table("r7.3_template_median68pA.model.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
- 
+    
     generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
     generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)
     
