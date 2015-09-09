@@ -137,34 +137,6 @@ plot_event_stdv_for_kmer <- function(m_kmer, unmethylated_data, methylated_data,
     return(p)
 }
 
-methylated_stdv_plot <- function(control_training, methylated_training, params) {
-    pdf("training_plots_event_stdv.pdf", 48, 16)
-    
-    kmers = make_context_mers("MG", 3, 0)
-    plots = c()
-    for(i in 1:length(kmers)) {
-        print(kmers[[i]])
-        plots[[i]] = plot_event_stdv_for_kmer(kmers[[i]], control_training, methylated_training, params)
-    }
-
-    multiplot(plotlist=plots, cols=8)
-    dev.off()
-}
-
-unmethylated_stdv_plot <- function(control_training, methylated_training, params) {
-    pdf("control_training_plots_event_stdv.pdf", 48, 16)
-    
-    # GG in the last position as a control
-    kmers = make_context_mers("GG", 3, 0)
-    plots = c()
-    for(i in 1:length(kmers)) {
-        plots[[i]] = plot_event_stdv_for_kmer(kmers[[i]], control_training, methylated_training, params)
-    }
-
-    multiplot(plotlist=plots, cols=8)
-    dev.off()
-}
-
 generate_training_plot <- function(outfile, twomer, control_data, methylated_data, params, plot_func)
 {
     pdf(outfile, 48, 16)
