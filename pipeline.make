@@ -142,7 +142,7 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
 r7.3_template_median68pA.model.pretrain.methyltrain \
-r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
+r7.3_complement_median68pA_pop1.model.pretrain.methyltrain \
 r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --train-unmethylated \
