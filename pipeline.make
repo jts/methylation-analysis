@@ -258,6 +258,15 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 	cp $@ $@.$(NOW)
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 
+%.site_comparison.tsv: ENCFF257GGV.bed %.sorted.bam.methyltest.sites.bed
+	bedtools/bin/bedtools intersect -wb -a ENCFF257GGV.bed \
+                                        -b <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
+                                        python ~/simpsonlab/users/jsimpson/code/methylation-analysis/calculate_bisulfite_vs_ont_signal.py > $@
+
+%.site_comparison.pdf: %.site_comparison.tsv
+	Rscript $(ROOT_DIR)/methylation_plots.R site_comparison_plot $^ $@
+	cp $@ $@.$(NOW)
+
 ##################################################
 #
 # Step 6. Global methylation analysis

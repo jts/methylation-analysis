@@ -21,12 +21,12 @@ for line in sys.stdin:
         island[key].gene = kv_dict['Gene']
 
     island[key].n += int(e_reads)
-    island[key].n_methylated += (int(e_reads) * float(e_m_percent))
+    island[key].n_methylated += (int(e_reads) * (float(e_m_percent) / 100))
     
 # header
-print "\t".join(["key", "bisulfite_depth", "bisulfite_percent_methylated", "gene"])
+print "\t".join(["key", "bisulfite_depth", "bisulfite_methylated_reads", "bisulfite_percent_methylated", "gene"])
 
 # data
 for key in island:
-    print "\t".join([str(x) for x in [key, island[key].n, island[key].n_methylated / island[key].n, island[key].gene]])
+    print "\t".join([str(x) for x in [key, island[key].n, island[key].n_methylated, (island[key].n_methylated / island[key].n) * 100, island[key].gene]])
 

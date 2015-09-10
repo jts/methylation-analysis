@@ -350,6 +350,18 @@ global_methylation_plot <- function(outfile, ...) {
     dev.off()
 }
 
+#
+# Site comparison
+#
+site_comparison_plot <- function(infile, outfile) {
+    require(ggplot2)
+    data <- read.table(infile, header=T)
+    pdf(outfile, 10, 10)
+    p <- ggplot(data, aes(bisulfite_percent_methylated, ont_p_methylated)) + geom_hex()
+    multiplot(p, cols=1)
+    dev.off()
+}
+
 # Plot multiple 5-mers on a single plot
 site_multiplot <- function(kmers, ...) {
     plots = c()
@@ -412,6 +424,8 @@ if(! interactive()) {
         read_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
+    } else if(command == "site_comparison_plot") {
+        site_comparison_plot(args[2], args[3])
     } else if(command == "global_methylation") {
         outfile = args[length(args)]
         global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))
