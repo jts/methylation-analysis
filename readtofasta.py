@@ -5,16 +5,13 @@ import h5py
 import sys
 import os
 
-def readevents(filename, calls="2D", fastq=False):
+def readevents(filename):
     events = []
     kmers = []
     sds = []
     f = h5py.File(filename,"r")
 
-    if calls=="2D":
-        fastq = True
-
-    calls = "BaseCalled_"+calls
+    calls = "BaseCalled_2D"
     if not "Analyses" in f or not "Basecall_2D_000" in f["Analyses"] or not calls in f["Analyses"]["Basecall_2D_000"]:
         raise KeyError("Not present in HDF5 file")
 
@@ -24,7 +21,7 @@ def readevents(filename, calls="2D", fastq=False):
     lines =  data[()].splitlines()
     seq = lines[1].decode('utf-8')
     label = lines[0][1:].strip()
-    labelSuffix = "_twodirections" if calls=="2D" else calls
+    labelSuffix = "_twodirections" 
     label = label+labelSuffix
     label = label.decode('utf-8')
 
@@ -35,14 +32,13 @@ if __name__ == "__main__":
 
     parser.add_argument('infile', type=str)
     parser.add_argument('-o','--output', type=argparse.FileType('w'), default=sys.stdout, help="Specify output file (default:stdout)") 
-    parser.add_argument('-c','--calls', choices=["template","complement","2D"],default="2D")
     parser.add_argument('-l','--linelength', type=int, default=60)
 
     args = parser.parse_args()
 
     try:
         if os.path.isfile(args.infile):
-            label, sequence = readevents(args.infile, args.calls, args.fastq)
+            label, sequence = readevents(args.infile)
             label += " "+arg.infile
             seqs = [(label, seq)]
         elif os.path.isdir(args.infile):
@@ -50,7 +46,7 @@ if __name__ == "__main__":
             for f in os.listdir(args.infile):
                pathname = os.path.join(args.infile, f)
                if os.path.isfile(pathname) and pathname.endswith('.fast5'):
-                   label, sequence = readevents(pathname, args.calls, args.fastq)
+                   label, sequence = readevents(pathname)
                    seqs.append((label+" "+pathname, sequence))
         else:
             raise ValueError("Path is not a directory or file: "+args.infile)

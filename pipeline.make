@@ -60,7 +60,7 @@ all: training_plots_abcMG_event_mean.pdf site_likelihood_plots.pdf read_classifi
 
 # Convert a directory of FAST5 files to fasta using readtofasta.py
 %.fasta: %.fast5
-	python $(ROOT_DIR)/readtofasta.py --calls 2D $</ > $@
+	python $(ROOT_DIR)/readtofasta.py $</ > $@
 
 #
 # Define variables for each data set
@@ -142,8 +142,8 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
 r7.3_template_median68pA.model.pretrain.methyltrain \
-r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
-r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+r7.3_complement_median68pA_pop1.model.pretrain.methyltrain \
+r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       --train-unmethylated \
