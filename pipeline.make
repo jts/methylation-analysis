@@ -60,7 +60,7 @@ all: training_plots.pdf site_likelihood_plots.pdf read_classification_plot.pdf P
 
 # Convert a directory of FAST5 files to fasta using readtofasta.py
 %.fasta: %.fast5
-	python $(ROOT_DIR)/readtofasta.py --calls 2D $</ > $@
+	python $(ROOT_DIR)/readtofasta.py $</ > $@
 
 #
 # Define variables for each data set
