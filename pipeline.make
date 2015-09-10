@@ -50,7 +50,7 @@ bedtools.version:
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
 .DEFAULT_GOAL := all
-all: training_plots.pdf site_likelihood_plots.pdf read_classification_plot.pdf ProHum20kb_cpg_island_plot.pdf
+all: training_plots_abcMG_event_mean.pdf site_likelihood_plots.pdf read_classification_plot.pdf ProHum20kb_cpg_island_plot.pdf
 
 ##################################################
 #
@@ -143,7 +143,7 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
 r7.3_template_median68pA.model.pretrain.methyltrain \
 r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
-r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       --train-unmethylated \
@@ -173,8 +173,8 @@ initial_methyl_models.fofn: r7.3_template_median68pA.model.pretrain.initial_meth
 
 # Train the model with methylated 5-mers
 r7.3_template_median68pA.model.methyltrain \
-r7.3_complement_median68pA_pop1.model.pretain.methyltrain \
-r7.3_complement_median68pA_pop2.model.pretain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+r7.3_complement_median68pA_pop1.model.methyltrain \
+r7.3_complement_median68pA_pop2.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       -m initial_methyl_models.fofn \
