@@ -59,14 +59,14 @@ all: training_plots_abcMG_event_mean.pdf site_likelihood_plots.pdf read_classifi
 ##################################################
 
 # Convert a directory of FAST5 files to fasta using readtofasta.py
-%.fasta: %.fast5
-	python $(ROOT_DIR)/readtofasta.py $</ > $@
+#%.fasta: %.fast5
+#	python $(ROOT_DIR)/readtofasta.py $</ > $@
 
 #
 # Define variables for each data set
 #
 ECOLI_MSSI_DATA=M.SssI.e2925_ecoli.fasta
-ECOLI_CONTROL_DATA=ERX708228.ecoli.fasta
+ECOLI_CONTROL_DATA=pcr.ecoli.fasta
 
 LAMBDA_MSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -89,7 +89,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-2300000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-1000000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -143,7 +143,7 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
 r7.3_template_median68pA.model.pretrain.methyltrain \
 r7.3_complement_median68pA_pop1.model.pretrain.methyltrain \
-r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       --train-unmethylated \
@@ -188,9 +188,9 @@ trained_methyl_models.fofn: r7.3_template_median68pA.model.methyltrain r7.3_comp
 	echo $^ | tr " " "\n" > $@
 
 # Make training plots
-training_plots_abcMG_event_mean.pdf: r7.3_template_median68pA.model.methyltrain $(TRAINING_CONTROL_BAM).methyltrain.0.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R training_plots
-	cp $@ $@.$(NOW)
+training_plots_abcMG_event_mean.pdf: $(TRAINING_BAM).methyltrain.tsv $(TRAINING_CONTROL_BAM).methyltrain.tsv
+	Rscript $(ROOT_DIR)/methylation_plots.R training_plots $^
+	cp $@ $@.$(NOW).pdf
 
 ##################################################
 #
@@ -213,11 +213,11 @@ training_plots_abcMG_event_mean.pdf: r7.3_template_median68pA.model.methyltrain 
 
 site_likelihood_plots.pdf: $(TEST_BAM).methyltest.sites.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R site_likelihood_plots $< $@
-	cp $@ $@.$(NOW)
+	cp $@ $@.$(NOW).pdf
 
 read_classification_plot.pdf: $(TEST_BAM).methyltest.reads.tsv $(TEST_CONTROL_BAM).methyltest.reads.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R read_classification_plot $^ $@
-	cp $@ $@.$(NOW)
+	cp $@ $@.$(NOW).pdf
 
 ##################################################
 #
@@ -255,7 +255,7 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 
 %_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
 	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
-	cp $@ $@.$(NOW)
+	cp $@ $@.$(NOW).pdf
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 
 %.site_comparison.tsv: ENCFF257GGV.bed %.sorted.bam.methyltest.sites.bed
@@ -265,7 +265,7 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 
 %.site_comparison.pdf: %.site_comparison.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R site_comparison_plot $^ $@
-	cp $@ $@.$(NOW)
+	cp $@ $@.$(NOW).pdf
 
 ##################################################
 #

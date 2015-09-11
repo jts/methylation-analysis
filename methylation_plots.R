@@ -183,10 +183,10 @@ generate_training_plot <- function(outfile, twomer, control_data, methylated_dat
     dev.off()
 }
 
-make_training_plots <- function()
+make_training_plots <- function(training_in, control_in)
 {
-    control_training <- load_training_data("ERX708228.ecoli.sorted.bam.methyltrain.tsv", "unmethylated")
-    methylated_training <- load_training_data("M.SssI.e2925_ecoli.sorted.bam.methyltrain.tsv", "methylated")
+    control_training <- load_training_data(control_in, "unmethylated")
+    methylated_training <- load_training_data(training_in, "methylated")
     params <- read.table("r7.3_template_median68pA.model.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
     
     generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
@@ -269,8 +269,10 @@ read_classification_plot <- function(m_file, c_file, out_file) {
     all <- rbind(m_data, c_data)
 
     p <- ggplot(all, aes(n_cpg, sum_ll_ratio, color=dataset)) + geom_point()
-
     ggsave(out_file, p)
+
+    p2 <- ggplot(all, aes(sum_ll_ratio / n_cpg, color=dataset)) + geom_density(alpha=0.5)
+    ggsave("read_class_density.pdf")
 }
 
 #
@@ -417,7 +419,7 @@ command = args[1]
 
 if(! interactive()) {
     if(command == "training_plots") {
-        make_training_plots()
+        make_training_plots(args[2], args[3])
     } else if(command == "site_likelihood_plots") {
         site_likelihood_plots(args[2], args[3])
     } else if(command == "read_classification_plot") {
