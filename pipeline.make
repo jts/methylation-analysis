@@ -89,7 +89,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-2000000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-100000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -113,7 +113,7 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 ##################################################
 
 # Index a reference genome with BWA
-%.fasta.bwt: %.fasta bwa.version
+%.fasta.bwt: %.fasta
 	bwa/bwa index $<
 
 # We use secondary expansion to construct the name of the variable
@@ -141,10 +141,7 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py $< > $@
 
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
-r7.3_template_median68pA.model.pretrain.methyltrain \
-r7.3_complement_median68pA_pop1.model.pretrain.methyltrain \
-r7.3_complement_median68pA_pop2.model.pretrain.methyltrain \
-$(TRAINING_CONTROL_BAM).methyltrain.tsv: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+r7.3_template_median68pA.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       --train-unmethylated \
@@ -154,6 +151,12 @@ $(TRAINING_CONTROL_BAM).methyltrain.tsv: $(TRAINING_CONTROL_BAM) $(TRAINING_CONT
                                       -r $(TRAINING_CONTROL_FASTA) \
                                       -g $(TRAINING_REFERENCE) \
                                       $(TRAINING_REGION) 
+
+# These files are build along site the template model. These rules make sure they get updated
+# appropriately
+r7.3_complement_median68pA_pop1.model.pretrain.methyltrain: r7.3_template_median68pA.model.pretrain.methyltrain
+r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: r7.3_template_median68pA.model.pretrain.methyltrain
+$(TRAINING_CONTROL_BAM).methyltrain.tsv: r7.3_template_median68pA.model.pretrain.methyltrain
 
 # Initialize methylation models from the base models
 %.model.pretrain: %.model
@@ -173,10 +176,7 @@ initial_methyl_models.fofn: r7.3_template_median68pA.model.pretrain.initial_meth
 	echo $^ | tr " " "\n" > $@
 
 # Train the model with methylated 5-mers
-r7.3_template_median68pA.model.methyltrain \
-r7.3_complement_median68pA_pop1.model.methyltrain \
-r7.3_complement_median68pA_pop2.model.methyltrain \
-$(TRAINING_BAM).methyltrain.tsv: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+r7.3_template_median68pA.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       -m initial_methyl_models.fofn \
@@ -184,6 +184,10 @@ $(TRAINING_BAM).methyltrain.tsv: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $
                                       -r $(TRAINING_FASTA) \
                                       -g $(TRAINING_REFERENCE).methylated \
                                       $(TRAINING_REGION)
+
+r7.3_complement_median68pA_pop1.model.methyltrain: r7.3_template_median68pA.model.methyltrain
+r7.3_complement_median68pA_pop2.model.methyltrain: r7.3_template_median68pA.model.methyltrain
+$(TRAINING_BAM).methyltrain.tsv: r7.3_template_median68pA.model.methyltrain
 
 # Make a fofn of the trained methylation models 
 trained_methyl_models.fofn: r7.3_template_median68pA.model.methyltrain r7.3_complement_median68pA_pop1.model.methyltrain r7.3_complement_median68pA_pop2.model.methyltrain

@@ -272,7 +272,7 @@ read_classification_plot <- function(m_file, c_file, out_file) {
     ggsave(out_file, p)
 
     p2 <- ggplot(all, aes(sum_ll_ratio / n_cpg, color=dataset)) + geom_density(alpha=0.5)
-    ggsave("read_class_density.pdf")
+    ggsave("read_classification_density.pdf")
 }
 
 #
