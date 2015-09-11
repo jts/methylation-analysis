@@ -89,7 +89,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-1000000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-2000000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -143,7 +143,8 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
 r7.3_template_median68pA.model.pretrain.methyltrain \
 r7.3_complement_median68pA_pop1.model.pretrain.methyltrain \
-r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+r7.3_complement_median68pA_pop2.model.pretrain.methyltrain \
+$(TRAINING_CONTROL_BAM).methyltrain.tsv: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       --train-unmethylated \
@@ -174,7 +175,8 @@ initial_methyl_models.fofn: r7.3_template_median68pA.model.pretrain.initial_meth
 # Train the model with methylated 5-mers
 r7.3_template_median68pA.model.methyltrain \
 r7.3_complement_median68pA_pop1.model.methyltrain \
-r7.3_complement_median68pA_pop2.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+r7.3_complement_median68pA_pop2.model.methyltrain \
+$(TRAINING_BAM).methyltrain.tsv: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       -m initial_methyl_models.fofn \
