@@ -224,7 +224,14 @@ load_site_data <- function(filename, dataset_name)
 load_read_classification_data <- function(filename, dataset_name)
 {
     data <- read.table(filename, header=T)
-    data$dataset = dataset_name
+    data$dataset = paste(dataset_name, data$complement_model, sep="-")
+    return(data)
+}
+
+load_strand_classification_data <- function(filename, dataset_name)
+{
+    data <- read.table(filename, header=T)
+    data$dataset = paste(dataset_name, data$model, sep="-")
     return(data)
 }
 
@@ -269,11 +276,25 @@ read_classification_plot <- function(m_file, c_file, out_file) {
     all <- rbind(m_data, c_data)
 
     p <- ggplot(all, aes(n_cpg, sum_ll_ratio, color=dataset)) + geom_point()
-    ggsave(out_file, p)
+    ggsave(out_file, p, width=20, height=10)
 
     p2 <- ggplot(all, aes(sum_ll_ratio / n_cpg, color=dataset)) + geom_density(alpha=0.5)
-    ggsave("read_classification_density.pdf")
+    ggsave("read_classification_density.pdf", width=20, height=10)
 }
+
+strand_classification_plot <- function(m_file, c_file, out_file) {
+    require(ggplot2)
+    m_data <- load_strand_classification_data(m_file, "methylated")
+    c_data <- load_strand_classification_data(c_file, "unmethylated")
+    all <- rbind(m_data, c_data)
+
+    p <- ggplot(all, aes(n_cpg, sum_ll_ratio, color=dataset)) + geom_point()
+    ggsave(out_file, p, width=20, height=10)
+
+    p2 <- ggplot(all, aes(sum_ll_ratio / n_cpg, color=dataset)) + geom_density(alpha=0.5)
+    ggsave("strand_classification_density.pdf", width=20, height=10)
+}
+
 
 #
 # Human analysis plots
@@ -353,6 +374,15 @@ global_methylation_plot <- function(outfile, ...) {
 }
 
 #
+# Event alignment summary
+#
+load_eventalign_summary <- function(filename) {
+   data <- read.table(filename, header=T)
+   data$dataset = filename
+   return(data)
+}
+
+#
 # Site comparison
 #
 site_comparison_plot <- function(infile, outfile) {
@@ -424,6 +454,8 @@ if(! interactive()) {
         site_likelihood_plots(args[2], args[3])
     } else if(command == "read_classification_plot") {
         read_classification_plot(args[2], args[3], args[4])
+    } else if(command == "strand_classification_plot") {
+        strand_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
     } else if(command == "site_comparison_plot") {

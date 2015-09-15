@@ -89,7 +89,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-100000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -129,6 +129,13 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 %.bam.bai: %.bam
 	samtools/samtools index $<
+
+%.eventalign.summary: %.sorted.bam %.sorted.bam.bai
+	nanopolish/nanopolish eventalign --summary $@ \
+                                     -b $*.sorted.bam \
+                                     -r $*.fasta \
+                                     -g $($*.fasta_REFERENCE) \
+                                     -t $(THREADS) > /dev/null
 
 ##################################################
 #
@@ -203,7 +210,7 @@ training_plots_abcMG_event_mean.pdf: $(TRAINING_BAM).methyltrain.tsv $(TRAINING_
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv: % %.bai trained_methyl_models.fofn
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai trained_methyl_models.fofn
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
@@ -224,6 +231,11 @@ site_likelihood_plots.pdf: $(TEST_BAM).methyltest.sites.tsv
 read_classification_plot.pdf: $(TEST_BAM).methyltest.reads.tsv $(TEST_CONTROL_BAM).methyltest.reads.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R read_classification_plot $^ $@
 	cp $@ $@.$(NOW).pdf
+
+strand_classification_plot.pdf: $(TEST_BAM).methyltest.strand.tsv $(TEST_CONTROL_BAM).methyltest.strand.tsv
+	Rscript $(ROOT_DIR)/methylation_plots.R strand_classification_plot $^ $@
+	cp $@ $@.$(NOW).pdf
+
 
 ##################################################
 #
