@@ -67,6 +67,8 @@ all: training_plots_abcMG_event_mean.pdf site_likelihood_plots.pdf read_classifi
 #
 ECOLI_MSSI_DATA=M.SssI.e2925_ecoli.fasta
 ECOLI_CONTROL_DATA=pcr.ecoli.fasta
+ECOLI_MARC_DATA=MARC_1b_050814.ecoli.fasta
+ECOLI_LOMAN_DATA=ERX708228.ecoli.fasta
 
 LAMBDA_MSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -77,6 +79,8 @@ HUMAN_GIAB_DATA=giab.NA24385.fasta
 # For each data set that we use, define a variable containing its reference
 $(ECOLI_MSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_CONTROL_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_MARC_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_LOMAN_DATA)_REFERENCE=ecoli_k12.fasta
 
 $(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 $(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
@@ -89,7 +93,7 @@ $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-1250000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -130,12 +134,12 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 %.bam.bai: %.bam
 	samtools/samtools index $<
 
-%.eventalign.summary: %.sorted.bam %.sorted.bam.bai
-	nanopolish/nanopolish eventalign --summary $@ \
+%.eventalign.summary %.eventalign: %.sorted.bam %.sorted.bam.bai
+	nanopolish/nanopolish eventalign --summary $*.eventalign.summary \
                                      -b $*.sorted.bam \
                                      -r $*.fasta \
                                      -g $($*.fasta_REFERENCE) \
-                                     -t $(THREADS) > /dev/null
+                                     -t $(THREADS) > $*.eventalign
 
 ##################################################
 #

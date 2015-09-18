@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import string
 import sys
 import os
 import operator
 import itertools
 import argparse
+
+# see: http://stackoverflow.com/questions/6628306/attributeerror-module-object-has-no-attribute-maketrans
+try:
+    maketrans = ''.maketrans
+except AttributeError:
+    # fallback for Python 2
+    from string import maketrans
 
 alphabet = [ 'A', 'C', 'G', 'M', 'T' ]
 
@@ -52,7 +58,7 @@ for kmer in make_all_mers(K):
 
 intab = "M"
 outtab = "C"
-transtab = string.maketrans(intab, outtab)
+transtab = maketrans(intab, outtab)
 
 # Set the values for the methylated k-mers depending upon the non-methylated versions
 for kmer in model:

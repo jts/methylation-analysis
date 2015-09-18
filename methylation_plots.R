@@ -44,17 +44,18 @@ SUBSET2 <- function(dat, ex) {
 load_training_data <- function(filename, dataset_name)
 {
     require(data.table)
-    data <- read.table(filename, header=T)
+    data <- fread(filename)
     data$dataset = dataset_name
-    
-    in_model = "t"
-    tbl = data.table(subset(data, model == in_model))
-    
-    setkey(tbl, model_kmer)
-    return(tbl)
+    setkey(data, model_kmer)
+    return(data)
 }
 
-plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params)
+get_params_for_kmer <- function(in_kmer, params) {
+    o = subset(params, kmer == in_kmer)[1,]
+    return(o)
+}
+
+plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params, model_short_name = "t")
 {
     require(plyr)
     require(ggplot2)
@@ -63,8 +64,8 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     c_kmer <- gsub("M", "C", m_kmer)
 
     # subset to the required kmers
-    u_subset <- unmethylated_data[c_kmer]
-    m_subset <- methylated_data[m_kmer]
+    u_subset <- unmethylated_data[c_kmer & model == model_short_name]
+    m_subset <- methylated_data[m_kmer & model == model_short_name]
 
     # get the gaussian parmeters for these kmers
     c_mean = subset(params, kmer == c_kmer)[1,]$level_mean
@@ -401,6 +402,100 @@ site_multiplot <- function(kmers, ...) {
         plots[[i]] = site_histogram(kmers[[i]], ...)
     }
     multiplot(plotlist=plots, cols=8)
+}
+
+# Plot the levels for the 4 kmers preceding, following
+# and adjacent to the given kmer, for a series of data
+kmer_neighbor_levels <- function(kmer, model_short_name, ...) {
+
+    require(stringr)
+    require(ggplot2)
+    
+    params <- NULL
+    if(model_short_name == "t") {
+        params <- read.table("r7.3_template_median68pA.model", header=T)
+    } else if(model_short_name == "c.p1") {
+        params <- read.table("r7.3_complement_median68pA_pop1.model", header=T)
+    } else if(model_short_name == "c.p2") {
+        params <- read.table("r7.3_complement_median68pA_pop2.model", header=T)
+    }
+
+    prefix = str_sub(kmer, 1, 4)
+    suffix = str_sub(kmer, 2, 5)
+
+    left_neighbors <- make_context_mers(prefix, 1, 0)
+    astride <- make_context_mers(prefix, 0, 1)
+    right_neighbors <- make_context_mers(suffix, 0, 1)
+
+    # Group the kmer list
+    all_kmers <- c()
+    j <- 1
+    for(i in seq(1, 4)) {
+        
+        all_kmers[[j]] <- left_neighbors[i]
+        all_kmers[[j+1]] <- astride[i]
+        all_kmers[[j+2]] <- right_neighbors[i]
+
+        j <- j + 3
+    }
+
+
+    datalist = list(...)
+
+    plots <- c()
+    i <- 1
+    for(k in all_kmers) {
+        all <- NULL
+        for(d in datalist) {
+            kmer_params <- get_params_for_kmer(k, params)
+            s_k <- d[k]
+            s_k_m <- s_k[model == model_short_name]
+
+            if(is.null(all)) {
+                all = s_k_m
+            } else {
+                all = rbind(all, s_k_m)
+            }
+        }
+
+        title <- k
+        if(k == kmer) {
+            title <- paste("base kmer,", k)
+        }
+        p <- ggplot(all, aes(level_mean, fill=dataset)) + 
+             geom_histogram(position = "identity", stat = "density", alpha=0.5) + 
+             stat_function(fun = dnorm, colour="black", arg=list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv)) + 
+             ggtitle(title) + 
+             xlim(50, 80)
+
+        row_idx <- 
+        plots[[i]] <- p
+        i <- i + 1
+    }
+
+    multiplot(plotlist=plots, cols=3)
+}
+
+# Plot the observed levels for kmer-
+plot_levels_by_neighbor <- function(in_kmer, model_short_name, data, params) {
+
+    kmer_params <- get_params_for_kmer(in_kmer, params)
+
+    # levels based on previous
+    p1 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean, fill=prev_kmer)) + 
+                 geom_histogram(stat="density", position="identity", alpha=0.5) + 
+            stat_function(fun=dnorm, args = list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv))
+    
+    # levels based on next
+    p2 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean, fill=next_kmer)) + 
+                 geom_histogram(stat="density", position="identity", alpha=0.5) + 
+            stat_function(fun=dnorm, args = list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv))
+
+    # all levels
+    p3 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean)) + 
+                 geom_histogram(stat="density", position="identity", alpha=0.5) + 
+            stat_function(fun=dnorm, args = list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv))
+    multiplot(p1, p2, p3, cols=1)
 }
 
 #
