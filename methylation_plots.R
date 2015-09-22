@@ -64,8 +64,8 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     c_kmer <- gsub("M", "C", m_kmer)
 
     # subset to the required kmers
-    u_subset <- unmethylated_data[c_kmer & model == model_short_name]
-    m_subset <- methylated_data[m_kmer & model == model_short_name]
+    u_subset <- unmethylated_data[model_kmer == c_kmer & model == model_short_name]
+    m_subset <- methylated_data[model_kmer == m_kmer & model == model_short_name]
 
     # get the gaussian parmeters for these kmers
     c_mean = subset(params, kmer == c_kmer)[1,]$level_mean
@@ -173,7 +173,7 @@ plot_event_duration_for_kmer <- function(m_kmer, unmethylated_data, methylated_d
 generate_training_plot <- function(outfile, twomer, control_data, methylated_data, params, plot_func)
 {
     pdf(outfile, 48, 16)
-    kmers = make_context_mers(twomer, 3, 0)
+    kmers = make_context_mers(twomer, 4, 0)
     plots = c()
     for(i in 1:length(kmers)) {
         print(kmers[[i]])
@@ -188,15 +188,15 @@ make_training_plots <- function(training_in, control_in)
 {
     control_training <- load_training_data(control_in, "unmethylated")
     methylated_training <- load_training_data(training_in, "methylated")
-    params <- read.table("r7.3_template_median68pA.model.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
+    params <- read.table("ont_template.model.pretrain.initial_methyl.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
     
-    generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
-    generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)
+    #generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
+    #generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)
     
-    generate_training_plot("training_plots_abcMG_event_stdv.pdf", "MG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
-    generate_training_plot("training_plots_abcGG_event_stdv.pdf", "GG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
+    #generate_training_plot("training_plots_abcMG_event_stdv.pdf", "MG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
+    #generate_training_plot("training_plots_abcGG_event_stdv.pdf", "GG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
 
-    kmers <- make_context_mers("", 5, 0, c('A', 'C', 'G', 'M', 'T'))
+    kmers <- make_context_mers("", 6, 0, c('A', 'C', 'G', 'M', 'T'))
     for(i in 1:length(kmers)) {
         curr <- kmers[[i]]
         if(length( grep("M", curr) ) > 0) {
@@ -480,16 +480,14 @@ kmer_neighbor_levels <- function(kmer, model_short_name, ...) {
 plot_levels_by_neighbor <- function(in_kmer, model_short_name, data, params) {
 
     kmer_params <- get_params_for_kmer(in_kmer, params)
-
+    
     # levels based on previous
     p1 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean, fill=prev_kmer)) + 
-                 geom_histogram(stat="density", position="identity", alpha=0.5) + 
-            stat_function(fun=dnorm, args = list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv))
+                 geom_histogram(stat="bin", position="identity", alpha=0.5)
     
     # levels based on next
     p2 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean, fill=next_kmer)) + 
-                 geom_histogram(stat="density", position="identity", alpha=0.5) + 
-            stat_function(fun=dnorm, args = list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv))
+                 geom_histogram(stat="bin", position="identity", alpha=0.5)
 
     # all levels
     p3 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean)) + 

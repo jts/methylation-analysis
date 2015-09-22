@@ -76,6 +76,8 @@ LAMBDA_CONTROL_DATA=control.lambda.fasta
 HUMAN_PROMEGA_DATA=ProHum20kb.fasta
 HUMAN_GIAB_DATA=giab.NA24385.fasta
 
+PSEUDO_DATA=pseudo.large.fasta
+
 # For each data set that we use, define a variable containing its reference
 $(ECOLI_MSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_CONTROL_DATA)_REFERENCE=ecoli_k12.fasta
@@ -88,12 +90,14 @@ $(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
 $(HUMAN_PROMEGA_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 
+$(PSEUDO_DATA)_REFERENCE=pseudomonas.reference.fasta
+
 #
 # These variables control which datasets are used to train the model, test, etc
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-1250000"
+TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
 TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
@@ -136,6 +140,7 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 %.eventalign.summary %.eventalign: %.sorted.bam %.sorted.bam.bai
 	nanopolish/nanopolish eventalign --summary $*.eventalign.summary \
+                                     --print-read-names \
                                      -b $*.sorted.bam \
                                      -r $*.fasta \
                                      -g $($*.fasta_REFERENCE) \
@@ -152,11 +157,11 @@ $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py $< > $@
 
 # Pretrain a model on unmethylated data to make the emissions better fit our HMM
-r7.3_template_median68pA.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
+ont_template.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       --train-unmethylated \
-                                      --out-suffix ".pretrain.methyltrain" \
+                                      --out-suffix ".methyltrain" \
                                       -m initial_pretrain_models.fofn \
                                       -b $(TRAINING_CONTROL_BAM) \
                                       -r $(TRAINING_CONTROL_FASTA) \
@@ -165,29 +170,29 @@ r7.3_template_median68pA.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(T
 
 # These files are build along site the template model. These rules make sure they get updated
 # appropriately
-r7.3_complement_median68pA_pop1.model.pretrain.methyltrain: r7.3_template_median68pA.model.pretrain.methyltrain
-r7.3_complement_median68pA_pop2.model.pretrain.methyltrain: r7.3_template_median68pA.model.pretrain.methyltrain
-$(TRAINING_CONTROL_BAM).methyltrain.tsv: r7.3_template_median68pA.model.pretrain.methyltrain
+ont_complement.pop1.model.pretrain.methyltrain: ont_template.model.pretrain.methyltrain
+ont_complement.pop2.model.pretrain.methyltrain: ont_template.model.pretrain.methyltrain
+$(TRAINING_CONTROL_BAM).methyltrain.tsv: ont_template.model.pretrain.methyltrain
 
 # Initialize methylation models from the base models
 %.model.pretrain: %.model
 	python $(ROOT_DIR)/methylate_model.py $< > $@
 
 # Make a fofn of the initialized pretrain models
-initial_pretrain_models.fofn: r7.3_template_median68pA.model.pretrain \
-                              r7.3_complement_median68pA_pop1.model.pretrain \
-                              r7.3_complement_median68pA_pop2.model.pretrain
+initial_pretrain_models.fofn: ont_template.model.pretrain \
+                              ont_complement.pop1.model.pretrain \
+                              ont_complement.pop2.model.pretrain
 	echo $^ | tr " " "\n" > $@
 
 %.model.pretrain.initial_methyl: %.model.pretrain.methyltrain
 	python $(ROOT_DIR)/methylate_model.py $< > $@
 
 # Make a fofn of the initialized methylation from the pretrain models    
-initial_methyl_models.fofn: r7.3_template_median68pA.model.pretrain.initial_methyl r7.3_complement_median68pA_pop1.model.pretrain.initial_methyl r7.3_complement_median68pA_pop2.model.pretrain.initial_methyl
+initial_methyl_models.fofn: ont_template.model.pretrain.initial_methyl ont_complement.pop1.model.pretrain.initial_methyl ont_complement.pop2.model.pretrain.initial_methyl
 	echo $^ | tr " " "\n" > $@
 
 # Train the model with methylated 5-mers
-r7.3_template_median68pA.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+ont_template.model.pretrain.initial_methyl.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
                                       -m initial_methyl_models.fofn \
@@ -196,12 +201,12 @@ r7.3_template_median68pA.model.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=
                                       -g $(TRAINING_REFERENCE).methylated \
                                       $(TRAINING_REGION)
 
-r7.3_complement_median68pA_pop1.model.methyltrain: r7.3_template_median68pA.model.methyltrain
-r7.3_complement_median68pA_pop2.model.methyltrain: r7.3_template_median68pA.model.methyltrain
-$(TRAINING_BAM).methyltrain.tsv: r7.3_template_median68pA.model.methyltrain
+ont_complement.pop1.model.pretrain.initial_methyl.methyltrain: ont_template.model.pretrain.initial_methyl.methyltrain
+ont_complement.pop2.model.pretrain.initial_methyl.methyltrain: ont_template.model.pretrain.initial_methyl.methyltrain
+$(TRAINING_BAM).methyltrain.tsv: ont_template.model.pretrain.initial_methyl.methyltrain
 
 # Make a fofn of the trained methylation models 
-trained_methyl_models.fofn: r7.3_template_median68pA.model.methyltrain r7.3_complement_median68pA_pop1.model.methyltrain r7.3_complement_median68pA_pop2.model.methyltrain
+trained_methyl_models.fofn: ont_template.model.pretrain.initial_methyl.methyltrain ont_complement.pop1.model.pretrain.initial_methyl.methyltrain ont_complement.pop2.model.pretrain.initial_methyl.methyltrain
 	echo $^ | tr " " "\n" > $@
 
 # Make training plots
