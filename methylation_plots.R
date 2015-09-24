@@ -64,8 +64,8 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     c_kmer <- gsub("M", "C", m_kmer)
 
     # subset to the required kmers
-    u_subset <- unmethylated_data[model_kmer == c_kmer & model == model_short_name]
-    m_subset <- methylated_data[model_kmer == m_kmer & model == model_short_name]
+    u_subset <- unmethylated_data[c_kmer][model == model_short_name]
+    m_subset <- methylated_data[m_kmer][model == model_short_name]
 
     # get the gaussian parmeters for these kmers
     c_mean = subset(params, kmer == c_kmer)[1,]$level_mean
@@ -172,7 +172,6 @@ plot_event_duration_for_kmer <- function(m_kmer, unmethylated_data, methylated_d
 
 generate_training_plot <- function(outfile, twomer, control_data, methylated_data, params, plot_func)
 {
-    pdf(outfile, 48, 16)
     kmers = make_context_mers(twomer, 4, 0)
     plots = c()
     for(i in 1:length(kmers)) {
@@ -180,7 +179,11 @@ generate_training_plot <- function(outfile, twomer, control_data, methylated_dat
         plots[[i]] = plot_func(kmers[[i]], control_data, methylated_data, params)
     }
 
-    multiplot(plotlist=plots, cols=8)
+
+    n_cols = sqrt(length(plots))
+
+    pdf(outfile, 6 * n_cols, 2 * n_cols)
+    multiplot(plotlist=plots, cols=n_cols)
     dev.off()
 }
 
@@ -190,25 +193,26 @@ make_training_plots <- function(training_in, control_in)
     methylated_training <- load_training_data(training_in, "methylated")
     params <- read.table("ont_template.model.pretrain.initial_methyl.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
     
-    #generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
-    #generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)
+    generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
+    generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)
     
     #generate_training_plot("training_plots_abcMG_event_stdv.pdf", "MG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
     #generate_training_plot("training_plots_abcGG_event_stdv.pdf", "GG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
 
-    kmers <- make_context_mers("", 6, 0, c('A', 'C', 'G', 'M', 'T'))
-    for(i in 1:length(kmers)) {
-        curr <- kmers[[i]]
-        if(length( grep("M", curr) ) > 0) {
-            if(nrow(methylated_training[curr]) > 100) {
-                print(curr)
-                print(nrow(methylated_training[ curr ]))
-                p <- plot_event_means_for_kmer(curr, control_training, methylated_training, params)
-                multiplot(p, cols=1)
-            }
-        }
-    }
-    dev.off()
+
+#    kmers <- make_context_mers("", 6, 0, c('A', 'C', 'G', 'M', 'T'))
+#    for(i in 1:length(kmers)) {
+#        curr <- kmers[[i]]
+#        if(length( grep("M", curr) ) > 0) {
+#            if(nrow(methylated_training[curr]) > 100) {
+#                print(curr)
+#                print(nrow(methylated_training[ curr ]))
+#                p <- plot_event_means_for_kmer(curr, control_training, methylated_training, params)
+#                multiplot(p, cols=1)
+#            }
+#        }
+#    }
+#    dev.off()
 }
 
 #
