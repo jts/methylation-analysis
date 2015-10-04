@@ -69,6 +69,8 @@ ECOLI_MSSI_DATA=M.SssI.e2925_ecoli.fasta
 ECOLI_CONTROL_DATA=pcr.ecoli.fasta
 ECOLI_MARC_DATA=MARC_1b_050814.ecoli.fasta
 ECOLI_LOMAN_DATA=ERX708228.ecoli.fasta
+ECOLI_LOMAN_SQK006_DATA=loman.ecoli_k12.sqk006.fasta
+ECOLI_LOMAN_PCR_SQK006_DATA=loman.ecoli_k12.pcr.sqk006.fasta
 
 LAMBDA_MSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -83,6 +85,8 @@ $(ECOLI_MSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_CONTROL_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_MARC_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_LOMAN_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_LOMAN_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_LOMAN_PCR_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
 
 $(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 $(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
@@ -96,7 +100,7 @@ $(PSEUDO_DATA)_REFERENCE=pseudomonas.reference.fasta
 # These variables control which datasets are used to train the model, test, etc
 #
 TRAINING_FASTA=$(ECOLI_MSSI_DATA)
-TRAINING_CONTROL_FASTA=$(ECOLI_CONTROL_DATA)
+TRAINING_CONTROL_FASTA=$(ECOLI_LOMAN_PCR_SQK006_DATA)
 TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
 TEST_FASTA=$(LAMBDA_MSSI_DATA)
