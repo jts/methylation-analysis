@@ -189,7 +189,7 @@ make_training_plots <- function(training_in, control_in)
 {
     control_training <- load_training_data(control_in, "unmethylated")
     methylated_training <- load_training_data(training_in, "methylated")
-    params <- read.table("ont_template.model.pretrain.initial_methyl.methyltrain", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
+    params <- read.table("t.006.M.SssI.trained", col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
     
     generate_training_plot("training_plots_abcMG_event_mean.pdf", "MG", control_training, methylated_training, params, plot_event_means_for_kmer)
     generate_training_plot("training_plots_abcGG_event_mean.pdf", "GG", control_training, methylated_training, params, plot_event_means_for_kmer)

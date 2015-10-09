@@ -50,7 +50,7 @@ bedtools.version:
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
 .DEFAULT_GOAL := all
-all: training_plots_abcMG_event_mean.pdf site_likelihood_plots.pdf read_classification_plot.pdf ProHum20kb_cpg_island_plot.pdf
+all: training_plots_abcMG_event_mean.pdf ProHum20kb_cpg_island_plot.pdf
 
 ##################################################
 #
@@ -65,15 +65,11 @@ all: training_plots_abcMG_event_mean.pdf site_likelihood_plots.pdf read_classifi
 #
 # Define variables for each data set
 #
-ECOLI_MSSI_DATA=M.SssI.e2925_ecoli.fasta
-ECOLI_CONTROL_DATA=pcr.ecoli.fasta
-ECOLI_MARC_DATA=MARC_1b_050814.ecoli.fasta
-ECOLI_LOMAN_DATA=ERX708228.ecoli.fasta
-ECOLI_LOMAN_SQK006_DATA=loman.ecoli_k12.sqk006.fasta
-ECOLI_LOMAN_PCR_SQK006_DATA=loman.ecoli_k12.pcr.sqk006.fasta
-ECOLI_MSSI_SQK006_DATA=M.SssI.e2925_ecoli.sqk006.fasta
+ECOLI_K12_DATA=loman.ecoli_k12.sqk006.fasta
+ECOLI_K12_PCR_DATA=loman.ecoli_k12.pcr.sqk006.fasta
+ECOLI_E2925_MSSSI_DATA=M.SssI.ecoli_e2925.sqk006.fasta
 
-LAMBDA_MSSI_DATA=M.SssI.lambda.fasta
+LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
 
 HUMAN_PROMEGA_DATA=ProHum20kb.fasta
@@ -83,44 +79,53 @@ HUMAN_NA12878_DATA=093015.NA12878.fasta
 PSEUDO_DATA=pseudo.large.fasta
 
 # For each data set that we use, define a variable containing its reference
-$(ECOLI_MSSI_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_CONTROL_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_MARC_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_LOMAN_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_LOMAN_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_LOMAN_PCR_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_MSSI_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_K12_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 
-$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
-$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
+#$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
+#$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
 
-$(HUMAN_PROMEGA_DATA)_REFERENCE=human_g1k_v37.fasta
-$(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_DATA)_REFERENCE=human_g1k_v37.fasta
-
-$(PSEUDO_DATA)_REFERENCE=pseudomonas.reference.fasta
 
 #
 # These variables control which datasets are used to train the model, test, etc
 #
-TRAINING_FASTA=$(ECOLI_MSSI_SQK006_DATA)
-TRAINING_CONTROL_FASTA=$(ECOLI_LOMAN_PCR_SQK006_DATA)
+PCR_TRAINING_FASTA=$(ECOLI_K12_PCR_DATA)
+DAM_TRAINING_FASTA=$(ECOLI_K12_DATA)
+MSSSI_TRAINING_FASTA=$(ECOLI_E2925_MSSSI_DATA)
 TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
-TEST_FASTA=$(LAMBDA_MSSI_DATA)
-TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
+#TEST_FASTA=$(LAMBDA_MSSSI_DATA)
+#TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
 
 #
 # These are derived convenience variables and should not be manually set
 # 
 # Derive dependent file names
-TRAINING_REFERENCE=$($(TRAINING_FASTA)_REFERENCE)
-TRAINING_BAM=$(TRAINING_FASTA:.fasta=.sorted.bam)
-TRAINING_CONTROL_BAM=$(TRAINING_CONTROL_FASTA:.fasta=.sorted.bam)
+
+# Reference file for training, must be the same for all training sets
+TRAINING_REFERENCE=$($(PCR_TRAINING_FASTA)_REFERENCE)
+
+# BAM file names
+PCR_TRAINING_BAM=$(PCR_TRAINING_FASTA:.fasta=.sorted.bam)
+DAM_TRAINING_BAM=$(DAM_TRAINING_FASTA:.fasta=.sorted.bam)
+MSSSI_TRAINING_BAM=$(MSSSI_TRAINING_FASTA:.fasta=.sorted.bam)
 
 TEST_REFERENCE=$($(TEST_FASTA)_REFERENCE)
 TEST_BAM=$(TEST_FASTA:.fasta=.sorted.bam)
 TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
+
+# Convert a FAST5 file to FASTA using poretools
+PORETOOLS=poretools
+%.fasta: %.fast5
+	$(PORETOOLS) fasta --type 2D $< > $@
+
+# Special case for data sets with multiple runs that must be joined together
+$(ECOLI_E2925_MSSSI_DATA): M.SssI.e2925_ecoli.sqk006.run1.fast5 M.SssI.e2925_ecoli.sqk006.run2.fast5
+	-rm $@
+	$(PORETOOLS) fasta --type 2D M.SssI.e2925_ecoli.sqk006.run1.fast5 > $@
+	$(PORETOOLS) fasta --type 2D M.SssI.e2925_ecoli.sqk006.run2.fast5 >> $@
 
 ##################################################
 #
@@ -136,12 +141,9 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 # containing the reference genome for this sample
 .SECONDEXPANSION:
 %.sorted.bam: %.fasta $$(%.fasta_REFERENCE) $$(%.fasta_REFERENCE).bwt bwa.version samtools.version
-	make -f $(ROOT_DIR)/alignment.make OUTPUT=$@ \
-                                       READS=$< \
-                                       REFERENCE=$($*.fasta_REFERENCE) \
-                                       THREADS=$(THREADS) \
-                                       BWA=bwa/bwa \
-                                       SAMTOOLS=samtools/samtools
+	bwa/bwa mem -t $(THREADS) -x ont2d $($*.fasta_REFERENCE) $< | \
+        samtools/samtools view -Sb - | \
+        samtools/samtools sort -f - $@
 
 %.bam.bai: %.bam
 	samtools/samtools index $<
@@ -157,69 +159,72 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 ##################################################
 #
-# Step 3. Train the methylation model
+# Step 3. Train models
 #
 ##################################################
+
+#
+# 3a. First, train using PCR-treated data. The
+#     trained model should be similar to ONT's
+#     model.
+#
+
+# Train a model on PCR-treated data to make the emissions better fit our HMM
+pcr.trained.fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE) ont_models.fofn
+	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --progress \
+                                      --train-unmethylated \
+                                      --out-fofn $@ \
+                                      --out-suffix ".pcr.trained.model" \
+                                      -m ont_models.fofn \
+                                      -b $(PCR_TRAINING_BAM) \
+                                      -r $(PCR_TRAINING_FASTA) \
+                                      -g $(TRAINING_REFERENCE) \
+                                      $(TRAINING_REGION) 
+
+# These files are built at the same time as output fofn. These rules make sure they get updated
+t.006.pcr.trained.model: pcr.trained.fofn
+c.p1.006.pcr.trained.model: pcr.trained.fofn
+c.p2.006.pcr.trained.model: pcr.trained.fofn
+$(TRAINING_CONTROL_BAM).methyltrain.tsv: pcr.trained.fofn
+
+#
+# 3b. Train the 5mC model, starting from the pcr-trained model
+#
+
+# Expand the alphabet of the pcr-trained model to include 5-mC k-mers
+%.pcr.trained.expanded.model: %.pcr.trained.model
+	python $(ROOT_DIR)/expand_model_alphabet.py $< > $@
 
 # Convert all CG dinucleotides of the reference genome to MG for training
 $(TRAINING_REFERENCE).methylated: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py $< > $@
 
-# Pretrain a model on unmethylated data to make the emissions better fit our HMM
-ont_template.model.pretrain.methyltrain: $(TRAINING_CONTROL_BAM) $(TRAINING_CONTROL_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_pretrain_models.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
-                                      --progress \
-                                      --train-unmethylated \
-                                      --out-suffix ".methyltrain" \
-                                      -m initial_pretrain_models.fofn \
-                                      -b $(TRAINING_CONTROL_BAM) \
-                                      -r $(TRAINING_CONTROL_FASTA) \
-                                      -g $(TRAINING_REFERENCE) \
-                                      $(TRAINING_REGION) 
-
-# These files are build along site the template model. These rules make sure they get updated
-# appropriately
-ont_complement.pop1.model.pretrain.methyltrain: ont_template.model.pretrain.methyltrain
-ont_complement.pop2.model.pretrain.methyltrain: ont_template.model.pretrain.methyltrain
-$(TRAINING_CONTROL_BAM).methyltrain.tsv: ont_template.model.pretrain.methyltrain
-
-# Initialize methylation models from the base models
-%.model.pretrain: %.model
-	python $(ROOT_DIR)/methylate_model.py $< > $@
-
 # Make a fofn of the initialized pretrain models
-initial_pretrain_models.fofn: ont_template.model.pretrain \
-                              ont_complement.pop1.model.pretrain \
-                              ont_complement.pop2.model.pretrain
-	echo $^ | tr " " "\n" > $@
-
-%.model.pretrain.initial_methyl: %.model.pretrain.methyltrain
-	python $(ROOT_DIR)/methylate_model.py $< > $@
-
-# Make a fofn of the initialized methylation from the pretrain models    
-initial_methyl_models.fofn: ont_template.model.pretrain.initial_methyl ont_complement.pop1.model.pretrain.initial_methyl ont_complement.pop2.model.pretrain.initial_methyl
+pcr.trained.expanded.fofn: t.006.pcr.trained.expanded.model \
+                          c.p1.006.pcr.trained.expanded.model \
+                          c.p2.006.pcr.trained.expanded.model
 	echo $^ | tr " " "\n" > $@
 
 # Train the model with methylated 5-mers
-ont_template.model.pretrain.initial_methyl.methyltrain: $(TRAINING_BAM) $(TRAINING_BAM:.bam=.bam.bai) $(TRAINING_FASTA) $(TRAINING_REFERENCE).methylated initial_methyl_models.fofn
+M.SssI.trained.fofn: $(MSSSI_TRAINING_BAM) $(MSSSI_TRAINING_BAM:.bam=.bam.bai) $(MSSSI_TRAINING_FASTA) $(TRAINING_REFERENCE).methylated pcr.trained.expanded.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --progress \
-                                      -m initial_methyl_models.fofn \
-                                      -b $(TRAINING_BAM) \
-                                      -r $(TRAINING_FASTA) \
+                                      --out-fofn $@ \
+                                      --out-suffix ".M.SssI.trained" \
+                                      -m pcr.trained.expanded.fofn \
+                                      -b $(MSSSI_TRAINING_BAM) \
+                                      -r $(MSSSI_TRAINING_FASTA) \
                                       -g $(TRAINING_REFERENCE).methylated \
                                       $(TRAINING_REGION)
 
-ont_complement.pop1.model.pretrain.initial_methyl.methyltrain: ont_template.model.pretrain.initial_methyl.methyltrain
-ont_complement.pop2.model.pretrain.initial_methyl.methyltrain: ont_template.model.pretrain.initial_methyl.methyltrain
-$(TRAINING_BAM).methyltrain.tsv: ont_template.model.pretrain.initial_methyl.methyltrain
-
-# Make a fofn of the trained methylation models 
-trained_methyl_models.fofn: ont_template.model.pretrain.initial_methyl.methyltrain ont_complement.pop1.model.pretrain.initial_methyl.methyltrain ont_complement.pop2.model.pretrain.initial_methyl.methyltrain
-	echo $^ | tr " " "\n" > $@
+t.006.M.SssI.trained.model: M.SssI.trained.fofn
+c.p1.006.M.SssI.trained.model: M.SssI.trained.fofn
+c.p2.006.M.SssI.trained.model: M.SssI.trained.fofn
+$(TRAINING_CONTROL_BAM).methyltrain.tsv: M.SssI.trained.fofn
 
 # Make training plots
-training_plots_abcMG_event_mean.pdf: $(TRAINING_BAM).methyltrain.tsv $(TRAINING_CONTROL_BAM).methyltrain.tsv
+training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R training_plots $^
 	cp $@ $@.$(NOW).pdf
 
@@ -228,12 +233,12 @@ training_plots_abcMG_event_mean.pdf: $(TRAINING_BAM).methyltrain.tsv $(TRAINING_
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai trained_methyl_models.fofn
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai M.SssI.trained.fofn
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-                                      -m trained_methyl_models.fofn \
+                                      -m M.SssI.trained.fofn \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
                                       -g $(TMP_REF)
