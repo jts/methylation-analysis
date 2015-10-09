@@ -55,7 +55,7 @@ get_params_for_kmer <- function(in_kmer, params) {
     return(o)
 }
 
-plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params, model_short_name = "t")
+plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params, model_short_name = "t.006")
 {
     require(plyr)
     require(ggplot2)
@@ -179,9 +179,7 @@ generate_training_plot <- function(outfile, twomer, control_data, methylated_dat
         plots[[i]] = plot_func(kmers[[i]], control_data, methylated_data, params)
     }
 
-
     n_cols = sqrt(length(plots))
-
     pdf(outfile, 6 * n_cols, 2 * n_cols)
     multiplot(plotlist=plots, cols=n_cols)
     dev.off()
@@ -199,20 +197,20 @@ make_training_plots <- function(training_in, control_in)
     #generate_training_plot("training_plots_abcMG_event_stdv.pdf", "MG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
     #generate_training_plot("training_plots_abcGG_event_stdv.pdf", "GG", control_training, methylated_training, params, plot_event_stdv_for_kmer)
 
-
-#    kmers <- make_context_mers("", 6, 0, c('A', 'C', 'G', 'M', 'T'))
-#    for(i in 1:length(kmers)) {
-#        curr <- kmers[[i]]
-#        if(length( grep("M", curr) ) > 0) {
-#            if(nrow(methylated_training[curr]) > 100) {
-#                print(curr)
-#                print(nrow(methylated_training[ curr ]))
-#                p <- plot_event_means_for_kmer(curr, control_training, methylated_training, params)
-#                multiplot(p, cols=1)
-#            }
-#        }
-#    }
-#    dev.off()
+    pdf("all_m_kmers.pdf")
+    kmers <- make_context_mers("", 6, 0, c('A', 'C', 'G', 'M', 'T'))
+    for(i in 1:length(kmers)) {
+        curr <- kmers[[i]]
+        if(length( grep("M", curr) ) > 0) {
+            if(nrow(methylated_training[curr]) > 100) {
+                print(curr)
+                print(nrow(methylated_training[ curr ]))
+                p <- plot_event_means_for_kmer(curr, control_training, methylated_training, params)
+                multiplot(p, cols=1)
+            }
+        }
+    }
+    dev.off()
 }
 
 #
@@ -314,27 +312,52 @@ read_bisulfite_scores_file <- function(filename) {
 
 human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     require(ggplot2)
+    require(stringr)
 
     ont <- read_ont_scores_file(nanopore_file)
     bisulfite <- read_bisulfite_scores_file(bisulfite_file)
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$near_gene = merged$gene.x != "."
-    ggplot(merged, aes(bisulfite_percent_methylated, 1 / (1 + exp(-sum_ll_ratio / n_ont_sites)), color=near_gene)) + 
+    ggplot(merged, aes(bisulfite_percent_methylated, sum_posterior / n_ont_sites, color=near_gene)) + 
         geom_point() +
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
-        ylab("P(methylated | ONT)") +
+        ylab("Posterior estimate of percent methylated (ont)") +
         ggtitle("Methylation signal at CpG Islands")
 
 
    ggsave(out_file, width=10,height=10)
 
    # plot histograms
-   p1 <- ggplot(ont, aes(100 * (1 / (1 + exp(-sum_ll_ratio / n_ont_sites))), fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
+   p1 <- ggplot(ont, aes(100 * sum_posterior / n_ont_sites, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
    #p1 <- ggplot(ont, aes(sum_posterior / n_ont_sites, fill=gene != ".")) + geom_density(alpha=0.5)
    p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
    pdf("histogram.pdf")
    multiplot(plotlist=list(p1, p2), cols=1)
+   dev.off()
+
+   plot_ont_hist <- function(data, title) { 
+        p <- ggplot(data, aes(100 * sum_posterior / n_ont_sites, fill=gene != ".")) +
+             geom_histogram(alpha=0.5, position="identity", binwidth=4) +
+             ggtitle(title)
+        return(p)
+   }
+
+   plot_bs_hist <- function(data, title) {
+      p <- ggplot(data, aes(bisulfite_percent_methylated, fill=gene != ".")) +
+           geom_histogram(alpha=0.5, position="identity", binwidth=4) +
+           ggtitle(title)
+      return(p)
+   }
+
+
+   p_ont_x <- plot_ont_hist(subset(ont, str_sub(key, 1, 4) == "chrX"), "ONT ChrX") 
+   p_ont_not_x <- plot_ont_hist(subset(ont, str_sub(key, 1, 4) != "chrX"), "ONT Not ChrX")
+   p_bs_x <- plot_bs_hist(subset(bisulfite, str_sub(key, 1, 4) == "chrX"), "Bisulfite ChrX") 
+   p_bs_not_x <- plot_bs_hist(subset(bisulfite, str_sub(key, 1, 4) != "chrX"), "Bisulfite Not ChrX")
+
+   pdf("histogram_chromosomes.pdf", 15, 10)
+   multiplot(plotlist=list(p_ont_x, p_ont_not_x, p_bs_x, p_bs_not_x), cols=2)
    dev.off()
 }
 
@@ -393,9 +416,13 @@ load_eventalign_summary <- function(filename) {
 site_comparison_plot <- function(infile, outfile) {
     require(ggplot2)
     data <- read.table(infile, header=T)
-    pdf(outfile, 10, 10)
-    p <- ggplot(data, aes(bisulfite_percent_methylated, ont_p_methylated)) + geom_hex()
-    multiplot(p, cols=1)
+    pdf(outfile)
+    p1 <- ggplot(data, aes(bisulfite_percent_methylated - 100 * ont_p_methylated)) + geom_histogram() + ggtitle("input")
+    p2 <- ggplot(transform(data, bisulfite_percent_methylated = sample(bisulfite_percent_methylated)), 
+                 aes(bisulfite_percent_methylated - 100 * ont_p_methylated)) + 
+                 geom_histogram() + 
+                 ggtitle("shuffled")
+    multiplot(p1, p2, cols=1)
     dev.off()
 }
 

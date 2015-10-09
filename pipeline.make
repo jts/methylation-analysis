@@ -71,12 +71,14 @@ ECOLI_MARC_DATA=MARC_1b_050814.ecoli.fasta
 ECOLI_LOMAN_DATA=ERX708228.ecoli.fasta
 ECOLI_LOMAN_SQK006_DATA=loman.ecoli_k12.sqk006.fasta
 ECOLI_LOMAN_PCR_SQK006_DATA=loman.ecoli_k12.pcr.sqk006.fasta
+ECOLI_MSSI_SQK006_DATA=M.SssI.e2925_ecoli.sqk006.fasta
 
 LAMBDA_MSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
 
 HUMAN_PROMEGA_DATA=ProHum20kb.fasta
 HUMAN_GIAB_DATA=giab.NA24385.fasta
+HUMAN_NA12878_DATA=093015.NA12878.fasta
 
 PSEUDO_DATA=pseudo.large.fasta
 
@@ -87,19 +89,21 @@ $(ECOLI_MARC_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_LOMAN_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_LOMAN_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_LOMAN_PCR_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_MSSI_SQK006_DATA)_REFERENCE=ecoli_k12.fasta
 
 $(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 $(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
 
 $(HUMAN_PROMEGA_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_GIAB_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_DATA)_REFERENCE=human_g1k_v37.fasta
 
 $(PSEUDO_DATA)_REFERENCE=pseudomonas.reference.fasta
 
 #
 # These variables control which datasets are used to train the model, test, etc
 #
-TRAINING_FASTA=$(ECOLI_MSSI_DATA)
+TRAINING_FASTA=$(ECOLI_MSSI_SQK006_DATA)
 TRAINING_CONTROL_FASTA=$(ECOLI_LOMAN_PCR_SQK006_DATA)
 TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
@@ -144,6 +148,7 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 %.eventalign.summary %.eventalign: %.sorted.bam %.sorted.bam.bai
 	nanopolish/nanopolish eventalign --summary $*.eventalign.summary \
+                                     --scale-events \
                                      --print-read-names \
                                      -b $*.sorted.bam \
                                      -r $*.fasta \
@@ -288,6 +293,7 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 	cp $@ $@.$(NOW).pdf
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
+	cp histogram_chromosomes.pdf $*.cpg_histogram_chromosomes.$(NOW).pdf
 
 %.site_comparison.tsv: ENCFF257GGV.bed %.sorted.bam.methyltest.sites.bed
 	bedtools/bin/bedtools intersect -wb -a ENCFF257GGV.bed \
