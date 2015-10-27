@@ -1,0 +1,5 @@
+.*
+*.fasta
+*.model
+sl_initialize.sh
+*.bed
