@@ -13,8 +13,9 @@ except AttributeError:
     # fallback for Python 2
     from string import maketrans
 
-alphabet = [ 'A', 'C', 'G', 'M', 'T' ]
+METHYLATION_SYMBOL = 'M'
 
+alphabet = [ 'A', 'C', 'G', METHYLATION_SYMBOL, 'T' ]
 def make_all_mers(K):
     return itertools.product(alphabet, repeat=K)
 
@@ -23,6 +24,7 @@ Modify an existing model to contain methyl-cytosines
 """
 parser = argparse.ArgumentParser(description=description, epilog='')
 parser.add_argument('input', action='store', help='model file')
+parser.add_argument('--alphabet', action='store', help='the alphabet to expand to')
 args = parser.parse_args()
 
 fn = args.input
@@ -56,13 +58,27 @@ for kmer in make_all_mers(K):
     if kmer not in model:
         model[kmer] = tuple([0.0, 0.0, 0.0, 0.0, 0.0])
 
-intab = "M"
-outtab = "C"
-transtab = maketrans(intab, outtab)
+from_char = METHYLATION_SYMBOL
+to_char = "N"
+
+# Set up a translation table which will make unmethylated
+# versions of the k-mers containing methylation sites.
+if args.alphabet == "CpG" or args.alphabet == "dcm":
+    to_char = "C"
+elif args.alphabet == "dam":
+    to_char = "A"
+else:
+    sys.stderr.write("unknown alphabet: " + args.alphabet)
+    sys.exit(1)
+
+# print a header line containing the alphabet
+print("#alphabet\t" + args.alphabet)
+
+translation_table = maketrans(from_char, to_char)
 
 # Set the values for the methylated k-mers depending upon the non-methylated versions
 for kmer in model:
-    no_m_kmer = kmer.translate(transtab)
+    no_m_kmer = kmer.translate(translation_table)
     model[kmer] = model[no_m_kmer]
 
 for key in sorted(model):

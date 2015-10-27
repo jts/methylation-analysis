@@ -109,7 +109,7 @@ plot_event_stdv_for_kmer <- function(m_kmer, unmethylated_data, methylated_data,
     m_subset <- methylated_data[m_kmer]
 
     # get the gaussian parmeters for these kmers
-    c_sd_mean = subset(params, kmer == c_kmer)[1,]$sd_meana
+    c_sd_mean = subset(params, kmer == c_kmer)[1,]$sd_mean
     c_sd_stdv = subset(params, kmer == c_kmer)[1,]$sd_stdv
     
     m_sd_mean = subset(params, kmer == m_kmer)[1,]$sd_mean
@@ -324,9 +324,23 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
         ylab("Posterior estimate of percent methylated (ont)") +
         ggtitle("Methylation signal at CpG Islands")
+   ggsave(out_file, width=10,height=10, useDingbats = FALSE)
 
+   # correlation coefficients
+   cor_all <- cor(merged$bisulfite_percent_methylated, merged$sum_posterior / merged$n_ont_sites)
+   print(cor_all)
+   
+   s <- subset(merged, near_gene == TRUE)
+   cor_near <- cor(s$bisulfite_percent_methylated, s$sum_posterior / s$n_ont_sites)
+   print(cor_near)
+   
+   s <- subset(merged, near_gene == FALSE)
+   cor_not_near <- cor(s$bisulfite_percent_methylated, s$sum_posterior / s$n_ont_sites)
+   print(cor_not_near)
 
-   ggsave(out_file, width=10,height=10)
+   shuffled = transform(merged, bisulfite_percent_methylated = sample(bisulfite_percent_methylated))
+   cor_shuffled <- cor(shuffled$bisulfite_percent_methylated, shuffled$sum_posterior / merged$n_ont_sites)
+   print(cor_shuffled)
 
    # plot histograms
    p1 <- ggplot(ont, aes(100 * sum_posterior / n_ont_sites, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
