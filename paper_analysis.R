@@ -35,7 +35,41 @@ get_all_distributions <- function() {
     return(rbind(cg, dam, dcm_a, dcm_t))
 }
 
-analyze_distributions <- function(type) {
+template_name = "t.006"
+complement_pop1_name = "c.p1.006"
+complement_pop2_name = "c.p2.006"
+models <- c(template_name, complement_pop1_name, complement_pop2_name)
+
+generate_shifted_kmer_table <- function(data, threshold = 1.0) {
+
+    require(plyr)
+
+    ddply(data, "model_strand", function(x) {
+        total <- nrow(x)
+        total_methylated <- sum(str_count(x$kmer, "M") > 0)
+        shifted <- sum(abs(x$delta) > threshold)
+        shifted_methylated <- sum(abs(x$delta) > threshold & str_count(x$kmer, "M") > 0)
+        data.frame(total_kmers = total,
+                   num_shifted = shifted, 
+                   total_methylated = total_methylated,
+                   num_methylated_shifted = shifted_methylated)
+    })
+}
+
+plot_shift_by_methlyated_position <- function(data) {
+    require(ggplot2)
+    ggplot(subset(data, num_methylated_sites == 1), aes(delta)) +
+        geom_histogram(binwidth=0.05, position="identity", alpha=0.5) +
+        facet_grid(site_positions ~ model_strand)
+}
+
+get_df_for_training_set <- function(type) {
+    return(rbind(get_df_for_training_set_by_strand(type, template_name),
+                 get_df_for_training_set_by_strand(type, complement_pop1_name),
+                 get_df_for_training_set_by_strand(type, complement_pop2_name)))
+}
+
+get_df_for_training_set_by_strand <- function(type, model_strand) {
     require(stringr)
     require(data.table)
 
@@ -45,28 +79,24 @@ analyze_distributions <- function(type) {
     unmethylated_pattern = ""
 
     trained_model_key = ""
-    input_model_key = ""
     
+    # Initialize data dependent on the type of methylation we're looking at
     if(type == "dam") {
         methylated_pattern <- "GMTC"
         unmethylated_pattern <- "GATC"
-        trained_model_key = "dam"
-        input_model_key = "dam"
+        trained_model_key = "dam.ecoli_k12"
     } else if(type == "CpG") {
         methylated_pattern <- "MG"
         unmethylated_pattern <- "CG"
-        trained_model_key = "M.SssI"
-        input_model_key = "cpg"
+        trained_model_key = "M.SssI.ecoli_e2925"
     } else if(type == "dcm_a") {
         methylated_pattern <- "CMAGG"
         unmethylated_pattern <- "CCAGG"
-        trained_model_key = "dcm"
-        input_model_key = "dcm"
+        trained_model_key = "dcm.ecoli_k12"
     } else if(type == "dcm_t") {
         methylated_pattern <- "CMTGG"
         unmethylated_pattern <- "CCTGG"
-        trained_model_key = "dcm"
-        input_model_key = "dcm"
+        trained_model_key = "dcm.ecoli_k12"
     }
 
     # Determine which DNA base is methylated
@@ -79,30 +109,35 @@ analyze_distributions <- function(type) {
             offset <- i
         }
     }
-
-    print(paste("methylated base:", methylated_base, sep=" "))
-
     match_prefix = str_sub(methylated_pattern, 1, offset - 1)
     match_suffix = str_sub(methylated_pattern, offset + 1)
+
+    # Debug prints
+    print(paste("methylated base:", methylated_base, sep=" "))
     print(sprintf("match -- prefix: %s suffix: %s", match_prefix, match_suffix))
     
-    base_model_name <- sprintf("t.006.ont.model", input_model_key)
+    # This is the model we compare levels to
+    base_model_name <- sprintf("%s.ont.model", model_strand)
     print(sprintf("base model: %s", base_model_name))
-
     input_model <- read_input_model(base_model_name)
-    trained_model <- read_trained_model(sprintf("t.006.%s.trained", trained_model_key))
 
-    trained_kmers <- trained_model$kmer
-
+    # This is the trained model
+    trained_model <- read_trained_model(sprintf("%s.%s.trained.model", model_strand, trained_model_key))
+    
     kmer <- vector()
     num_methylated_sites <- vector()
     site_positions <- vector()
     kl_score <- vector()
     delta <- vector()
 
+    # Iteraate over the kmers
+    trained_kmers <- trained_model$kmer
     for(test_kmer in trained_kmers) {
+
+        # Transform the kmer into the unmethylated version
         unmethylated_kmer <- gsub(methylated_symbol, methylated_base, test_kmer)
         
+        # Look up the gaussian parameters from the input and trained model
         p1 <- get_gaussian_parameters(trained_model, test_kmer)
         p2 <- get_gaussian_parameters(input_model, unmethylated_kmer)
 
@@ -112,10 +147,9 @@ analyze_distributions <- function(type) {
         m2 <- p2[1]
         s2 <- p2[2]
         
+        # Calculate summary stats
         kl <- gaussian_kl(m1, s1, m2, s2)
         d <- m1 - m2
-
-        print(sprintf("kmer: %s %f %f %f", test_kmer, m1, m2, d))
 
         num_sites <- 0
         num_valid_sites <- 0
@@ -124,6 +158,7 @@ analyze_distributions <- function(type) {
         
         # Check if this kmer contains a methylation site at an invalid location
         # This is necessary because the model contains all possible k^sigma strings
+        # and some of these strings do not contain a valid recognition site
         for(i in 1:str_length(test_kmer)) {
             s = str_sub(test_kmer, i, i)
             if(s == methylated_symbol) {
@@ -156,7 +191,7 @@ analyze_distributions <- function(type) {
             is_valid_kmer = 0
         }
 
-        # Is this a valid k-mer over the methylation alphabet?
+        # If the kmer is valid, record stats
         if(is_valid_kmer) {
             kmer <- c(kmer, test_kmer)
             num_methylated_sites <- c(num_methylated_sites, num_valid_sites)
@@ -168,6 +203,7 @@ analyze_distributions <- function(type) {
 
     df = data.frame(kmer, num_methylated_sites, kl_score, site_positions, delta)
     df$type <- type
+    df$model_strand = model_strand
     return(df)
 }
 
