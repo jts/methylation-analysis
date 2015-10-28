@@ -6,7 +6,15 @@ get_gaussian_parameters <- function(model, k) {
     return(c(mean, stdv))
 }
 
-read_model <- function(filename) {
+read_input_model <- function(filename) {
+    df <- read.table(filename, header=T)
+    dt <- data.table(df)
+    setkey(dt, kmer)
+    return(dt)
+}
+
+
+read_trained_model <- function(filename) {
     df <- read.table(filename, col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
     dt <- data.table(df)
     setkey(dt, kmer)
@@ -77,9 +85,12 @@ analyze_distributions <- function(type) {
     match_prefix = str_sub(methylated_pattern, 1, offset - 1)
     match_suffix = str_sub(methylated_pattern, offset + 1)
     print(sprintf("match -- prefix: %s suffix: %s", match_prefix, match_suffix))
+    
+    base_model_name <- sprintf("t.006.ont.model", input_model_key)
+    print(sprintf("base model: %s", base_model_name))
 
-    input_model <- read_model(sprintf("t.006.pcr.trained.%s_expanded.model", input_model_key))
-    trained_model <- read_model(sprintf("t.006.%s.trained", trained_model_key))
+    input_model <- read_input_model(base_model_name)
+    trained_model <- read_trained_model(sprintf("t.006.%s.trained", trained_model_key))
 
     trained_kmers <- trained_model$kmer
 
@@ -103,6 +114,8 @@ analyze_distributions <- function(type) {
         
         kl <- gaussian_kl(m1, s1, m2, s2)
         d <- m1 - m2
+
+        print(sprintf("kmer: %s %f %f %f", test_kmer, m1, m2, d))
 
         num_sites <- 0
         num_valid_sites <- 0
