@@ -109,6 +109,7 @@ TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
 # Reference file for training, must be the same for all training sets
 TRAINING_REFERENCE=$($(PCR_TRAINING_FASTA)_REFERENCE)
+METHYLTRAIN_EXTRA_OPTS = 
 
 # BAM file names
 PCR_TRAINING_BAM=$(PCR_TRAINING_FASTA:.fasta=.sorted.bam)
@@ -193,7 +194,7 @@ $(HUMAN_NA12878_DATA): 093015.NA12878.fasta \
 #
 PCR_ECOLI_TRAINED=pcr.ecoli_k12.trained
 $(PCR_ECOLI_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE) ont.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(PCR_ECOLI_TRAINED).model \
@@ -224,7 +225,7 @@ $(TRAINING_REFERENCE).cpg_methylated: $(TRAINING_REFERENCE) pythonlibs.version
 # Train the model
 MSSSI_ECOLI_TRAINED=M.SssI.ecoli_e2925.trained
 $(MSSSI_ECOLI_TRAINED).fofn: $(MSSSI_TRAINING_BAM) $(MSSSI_TRAINING_BAM:.bam=.bam.bai) $(MSSSI_TRAINING_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.cpg_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(MSSSI_ECOLI_TRAINED).model \
@@ -242,7 +243,7 @@ $(MSSSI_TRAINING_BAM).methyltrain.tsv: $(MSSSI_ECOLI_TRAINED).fofn
 # Perform the training with the unmethylated E2925 data as a negative control
 MSSSI_CONTROL_TRAINED=native.ecoli_e2925.trained
 $(MSSSI_CONTROL_TRAINED).fofn: $(MSSSI_CONTROL_BAM) $(MSSSI_CONTROL_BAM:.bam=.bam.bai) $(MSSSI_CONTROL_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.cpg_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(MSSSI_CONTROL_TRAINED).model \
@@ -260,7 +261,7 @@ $(MSSSI_CONTROL_BAM).methyltrain.tsv: $(MSSSI_CONTROL_TRAINED).fofn
 
 PCR_ECOLI_CPG_TRAINED=pcr.ecoli_k12.cpg.trained
 $(PCR_ECOLI_CPG_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(PCR_ECOLI_CPG_TRAINED).model \
@@ -273,7 +274,7 @@ $(PCR_ECOLI_CPG_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.
 # Perform the training with the unmethylated E2925 data as a negative control
 MSSSI_CONTROL_K12_TRAINED=native.ecoli_e2925.k12.trained
 $(MSSSI_CONTROL_K12_TRAINED).fofn: $(MSSSI_CONTROL_BAM) $(MSSSI_CONTROL_BAM:.bam=.bam.bai) $(MSSSI_CONTROL_FASTA) $(TRAINING_REFERENCE) ont.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(MSSSI_CONTROL_K12_TRAINED).model \
@@ -304,7 +305,7 @@ $(TRAINING_REFERENCE).dam.methylated: $(TRAINING_REFERENCE) pythonlibs.version
 # Train the model with methylated 5-mers
 DAM_ECOLI_TRAINED=dam.ecoli_k12.trained
 $(DAM_ECOLI_TRAINED).fofn: $(DAM_TRAINING_BAM) $(DAM_TRAINING_BAM:.bam=.bam.bai) $(DAM_TRAINING_FASTA) $(TRAINING_REFERENCE).dam.methylated ont.dam_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(DAM_ECOLI_TRAINED).model \
@@ -334,7 +335,7 @@ $(TRAINING_REFERENCE).dcm.methylated: $(TRAINING_REFERENCE) pythonlibs.version
 # Train the model with methylated 5-mers
 DCM_ECOLI_TRAINED=dcm.ecoli_k12.trained
 $(DCM_ECOLI_TRAINED).fofn: $(DCM_TRAINING_BAM) $(DCM_TRAINING_BAM:.bam=.bam.bai) $(DCM_TRAINING_FASTA) $(TRAINING_REFERENCE).dcm.methylated ont.dcm_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $@ \
                                       --out-suffix .$(DCM_ECOLI_TRAINED).model \
