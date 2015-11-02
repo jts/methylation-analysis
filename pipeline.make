@@ -51,6 +51,7 @@ NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
 .DEFAULT_GOAL := all
 all: training_plots_abcMG_event_mean.pdf ProHum20kb_cpg_island_plot.pdf
+all-trained: M.SssI.ecoli_e2925.sqk006.sorted.bam.methyltrain.tsv loman.ecoli_k12.pcr.sqk006.sorted.bam.methyltrain.tsv
 
 ##################################################
 #
@@ -68,6 +69,7 @@ all: training_plots_abcMG_event_mean.pdf ProHum20kb_cpg_island_plot.pdf
 ECOLI_K12_DATA=loman.ecoli_k12.sqk006.fasta
 ECOLI_K12_PCR_DATA=loman.ecoli_k12.pcr.sqk006.fasta
 ECOLI_E2925_MSSSI_DATA=M.SssI.ecoli_e2925.sqk006.fasta
+ECOLI_E2925_NATIVE_DATA=native.ecoli_e2925.sqk006.fasta
 
 LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -80,6 +82,7 @@ HUMAN_NA12878_DATA=NA12878.merged.fasta
 $(ECOLI_K12_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_E2925_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
 
 #$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 #$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
@@ -93,6 +96,7 @@ PCR_TRAINING_FASTA=$(ECOLI_K12_PCR_DATA)
 DAM_TRAINING_FASTA=$(ECOLI_K12_DATA)
 DCM_TRAINING_FASTA=$(ECOLI_K12_DATA)
 MSSSI_TRAINING_FASTA=$(ECOLI_E2925_MSSSI_DATA)
+MSSSI_CONTROL_FASTA=$(ECOLI_E2925_NATIVE_DATA)
 TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
 
 #TEST_FASTA=$(LAMBDA_MSSSI_DATA)
@@ -111,6 +115,7 @@ PCR_TRAINING_BAM=$(PCR_TRAINING_FASTA:.fasta=.sorted.bam)
 DAM_TRAINING_BAM=$(DAM_TRAINING_FASTA:.fasta=.sorted.bam)
 DCM_TRAINING_BAM=$(DCM_TRAINING_FASTA:.fasta=.sorted.bam)
 MSSSI_TRAINING_BAM=$(MSSSI_TRAINING_FASTA:.fasta=.sorted.bam)
+MSSSI_CONTROL_BAM=$(MSSSI_CONTROL_FASTA:.fasta=.sorted.bam)
 
 TEST_REFERENCE=$($(TEST_FASTA)_REFERENCE)
 TEST_BAM=$(TEST_FASTA:.fasta=.sorted.bam)
@@ -118,16 +123,25 @@ TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 # Convert a FAST5 file to FASTA using poretools
 PORETOOLS=poretools
-%.fasta: %.fast5
+
+# Pass reads
+%.pass.fasta: %.fast5/pass
 	$(PORETOOLS) fasta --type 2D $< > $@
 
-# Special case for data sets with multiple runs that must be joined together
-$(ECOLI_E2925_MSSSI_DATA): M.SssI.e2925_ecoli.sqk006.run1.fast5 M.SssI.e2925_ecoli.sqk006.run2.fast5
-	-rm $@
-	$(PORETOOLS) fasta --type 2D M.SssI.e2925_ecoli.sqk006.run1.fast5 > $@
-	$(PORETOOLS) fasta --type 2D M.SssI.e2925_ecoli.sqk006.run2.fast5 >> $@
+# Fail reads
+%.fail.fasta: %.fast5/fail
+	$(PORETOOLS) fasta --type 2D $< > $@
 
-$(HUMAN_NA12878_DATA): 093015.NA12878.fasta oicr.run1.wash.NA12878.fasta
+%.fasta: %.pass.fasta %.fail.fasta
+	cat $^ > $@
+
+# Special case for data sets with multiple runs that must be joined together
+$(ECOLI_E2925_MSSSI_DATA): M.SssI.ecoli_e2925.sqk006.run1.fasta M.SssI.ecoli_e2925.sqk006.run2.fasta
+	cat $^ > $@
+
+$(HUMAN_NA12878_DATA): 093015.NA12878.fasta \
+                       oicr.run1.wash.NA12878.fasta \
+                       oicr.run2.NA12878.fasta
 	cat $^ > $@
 
 ##################################################
@@ -178,7 +192,6 @@ $(HUMAN_NA12878_DATA): 093015.NA12878.fasta oicr.run1.wash.NA12878.fasta
 
 #
 PCR_ECOLI_TRAINED=pcr.ecoli_k12.trained
-
 $(PCR_ECOLI_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE) ont.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --train-kmers all \
@@ -226,6 +239,56 @@ c.p1.006.$(MSSSI_ECOLI_TRAINED).model: $(MSSSI_ECOLI_TRAINED).fofn
 c.p2.006.$(MSSSI_ECOLI_TRAINED).model: $(MSSSI_ECOLI_TRAINED).fofn
 $(MSSSI_TRAINING_BAM).methyltrain.tsv: $(MSSSI_ECOLI_TRAINED).fofn
 
+# Perform the training with the unmethylated E2925 data as a negative control
+MSSSI_CONTROL_TRAINED=native.ecoli_e2925.trained
+$(MSSSI_CONTROL_TRAINED).fofn: $(MSSSI_CONTROL_BAM) $(MSSSI_CONTROL_BAM:.bam=.bam.bai) $(MSSSI_CONTROL_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.cpg_expanded.fofn
+	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --train-kmers all \
+                                      --out-fofn $@ \
+                                      --out-suffix .$(MSSSI_CONTROL_TRAINED).model \
+                                      -m ont.cpg_expanded.fofn \
+                                      -b $(MSSSI_CONTROL_BAM) \
+                                      -r $(MSSSI_CONTROL_FASTA) \
+                                      -g $(TRAINING_REFERENCE).cpg_methylated \
+                                      $(TRAINING_REGION)
+
+t.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
+c.p1.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
+c.p2.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
+$(MSSSI_CONTROL_BAM).methyltrain.tsv: $(MSSSI_CONTROL_TRAINED).fofn
+
+
+PCR_ECOLI_CPG_TRAINED=pcr.ecoli_k12.cpg.trained
+$(PCR_ECOLI_CPG_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.fofn
+	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --train-kmers all \
+                                      --out-fofn $@ \
+                                      --out-suffix .$(PCR_ECOLI_CPG_TRAINED).model \
+                                      -m ont.cpg_expanded.fofn \
+                                      -b $(PCR_TRAINING_BAM) \
+                                      -r $(PCR_TRAINING_FASTA) \
+                                      -g $(TRAINING_REFERENCE).cpg_methylated \
+                                      $(TRAINING_REGION) 
+
+# Perform the training with the unmethylated E2925 data as a negative control
+MSSSI_CONTROL_K12_TRAINED=native.ecoli_e2925.k12.trained
+$(MSSSI_CONTROL_K12_TRAINED).fofn: $(MSSSI_CONTROL_BAM) $(MSSSI_CONTROL_BAM:.bam=.bam.bai) $(MSSSI_CONTROL_FASTA) $(TRAINING_REFERENCE) ont.fofn
+	nanopolish/nanopolish methyltrain -t $(THREADS) \
+                                      --train-kmers all \
+                                      --out-fofn $@ \
+                                      --out-suffix .$(MSSSI_CONTROL_K12_TRAINED).model \
+                                      -m ont.fofn \
+                                      -b $(MSSSI_CONTROL_BAM) \
+                                      -r $(MSSSI_CONTROL_FASTA) \
+                                      -g $(TRAINING_REFERENCE) \
+                                      $(TRAINING_REGION)
+
+t.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
+c.p1.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
+c.p2.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
+$(MSSSI_CONTROL_BAM).methyltrain.tsv: $(MSSSI_CONTROL_TRAINED).fofn
+
+
 #
 # 3c. Train the dam model
 #
@@ -269,6 +332,7 @@ $(TRAINING_REFERENCE).dcm.methylated: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py --recognition dcm $< > $@
 
 # Train the model with methylated 5-mers
+DCM_ECOLI_TRAINED=dcm.ecoli_k12.trained
 $(DCM_ECOLI_TRAINED).fofn: $(DCM_TRAINING_BAM) $(DCM_TRAINING_BAM:.bam=.bam.bai) $(DCM_TRAINING_FASTA) $(TRAINING_REFERENCE).dcm.methylated ont.dcm_expanded.fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) \
                                       --train-kmers all \
@@ -295,12 +359,12 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai M.SssI.trained.fofn
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai M.SssI.ecoli_e2925.trained.fofn
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-                                      -m M.SssI.trained.fofn \
+                                      -m M.SssI.ecoli_e2925.trained.fofn \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
                                       -g $(TMP_REF)
