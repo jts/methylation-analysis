@@ -56,20 +56,21 @@ generate_shifted_kmer_table <- function(data, threshold = 1.0) {
     })
 }
 
-plot_shift_by_methlyated_position <- function(data) {
+plot_shift_by_model_strand <- function(data) {
     require(ggplot2)
-    ggplot(subset(data, num_methylated_sites == 1), aes(delta)) +
-        geom_histogram(binwidth=0.05, position="identity", alpha=0.5) +
+    ggplot(subset(data, num_methylated_sites <= 1), aes(delta, fill=site_positions)) +
+        geom_histogram(aes(y=(..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]), binwidth=0.05, position="identity", alpha=0.5) +
         facet_grid(site_positions ~ model_strand)
 }
 
-get_df_for_training_set <- function(type) {
-    return(rbind(get_df_for_training_set_by_strand(type, template_name),
-                 get_df_for_training_set_by_strand(type, complement_pop1_name),
-                 get_df_for_training_set_by_strand(type, complement_pop2_name)))
+
+get_df_for_training_set <- function(alphabet_type, model_key) {
+    return(rbind(get_df_for_training_set_by_strand(alphabet_type, model_key, template_name),
+                 get_df_for_training_set_by_strand(alphabet_type, model_key, complement_pop1_name),
+                 get_df_for_training_set_by_strand(alphabet_type, model_key, complement_pop2_name)))
 }
 
-get_df_for_training_set_by_strand <- function(type, model_strand) {
+get_df_for_training_set_by_strand <- function(alphabet_type, trained_model_key, model_strand) {
     require(stringr)
     require(data.table)
 
@@ -77,26 +78,26 @@ get_df_for_training_set_by_strand <- function(type, model_strand) {
     
     methylated_pattern = ""
     unmethylated_pattern = ""
-
-    trained_model_key = ""
     
     # Initialize data dependent on the type of methylation we're looking at
-    if(type == "dam") {
+    if(alphabet_type == "dam") {
         methylated_pattern <- "GMTC"
         unmethylated_pattern <- "GATC"
-        trained_model_key = "dam.ecoli_k12"
-    } else if(type == "CpG") {
+    } else if(alphabet_type == "CpG") {
         methylated_pattern <- "MG"
         unmethylated_pattern <- "CG"
-        trained_model_key = "M.SssI.ecoli_e2925"
-    } else if(type == "dcm_a") {
+    } else if(alphabet_type == "CpG_negative") {
+        methylated_pattern <- "MG"
+        unmethylated_pattern <- "CG"
+    } else if(alphabet_type == "dcm_a") {
         methylated_pattern <- "CMAGG"
         unmethylated_pattern <- "CCAGG"
-        trained_model_key = "dcm.ecoli_k12"
-    } else if(type == "dcm_t") {
+    } else if(alphabet_type == "dcm_t") {
         methylated_pattern <- "CMTGG"
         unmethylated_pattern <- "CCTGG"
-        trained_model_key = "dcm.ecoli_k12"
+    } else if(alphabet_type == "nucleotide") {
+        methylated_pattern <- ""
+        unmethylated_pattern <- ""
     }
 
     # Determine which DNA base is methylated
@@ -112,23 +113,23 @@ get_df_for_training_set_by_strand <- function(type, model_strand) {
     match_prefix = str_sub(methylated_pattern, 1, offset - 1)
     match_suffix = str_sub(methylated_pattern, offset + 1)
 
-    # Debug prints
-    print(paste("methylated base:", methylated_base, sep=" "))
-    print(sprintf("match -- prefix: %s suffix: %s", match_prefix, match_suffix))
-    
     # This is the model we compare levels to
     base_model_name <- sprintf("%s.ont.model", model_strand)
-    print(sprintf("base model: %s", base_model_name))
     input_model <- read_input_model(base_model_name)
 
     # This is the trained model
     trained_model <- read_trained_model(sprintf("%s.%s.trained.model", model_strand, trained_model_key))
     
+    # Debug print
+    print(sprintf("Methylated base: %s prefix: %s suffix: %s base model: %s", 
+                  methylated_base, match_prefix, match_suffix, base_model_name))
+
     kmer <- vector()
     num_methylated_sites <- vector()
     site_positions <- vector()
     kl_score <- vector()
     delta <- vector()
+    masked_kmers <- vector()
 
     # Iteraate over the kmers
     trained_kmers <- trained_model$kmer
@@ -159,6 +160,7 @@ get_df_for_training_set_by_strand <- function(type, model_strand) {
         # Check if this kmer contains a methylation site at an invalid location
         # This is necessary because the model contains all possible k^sigma strings
         # and some of these strings do not contain a valid recognition site
+        masked_kmer = test_kmer
         for(i in 1:str_length(test_kmer)) {
             s = str_sub(test_kmer, i, i)
             if(s == methylated_symbol) {
@@ -182,12 +184,14 @@ get_df_for_training_set_by_strand <- function(type, model_strand) {
                     num_valid_sites <- num_valid_sites + 1
                     site_str <- paste(site_str, i, sep=",")
                 }
+            } else {
+                substr(masked_kmer, i, i) <- 'a'
             }
         }
 
         # Also check whether the kmer contains an unmethylated
         # recognition site, which is also invalid
-        if(str_count(test_kmer, unmethylated_pattern) > 0) {
+        if(methylated_pattern != "" && str_count(test_kmer, unmethylated_pattern) > 0) {
             is_valid_kmer = 0
         }
 
@@ -198,11 +202,12 @@ get_df_for_training_set_by_strand <- function(type, model_strand) {
             kl_score <- c(kl_score, kl)
             site_positions <- c(site_positions, site_str)
             delta <- c(delta, d)
+            masked_kmers <- c(masked_kmers, masked_kmer)
         }
     }
 
-    df = data.frame(kmer, num_methylated_sites, kl_score, site_positions, delta)
-    df$type <- type
+    df = data.frame(kmer, num_methylated_sites, kl_score, site_positions, delta, masked_kmers)
+    df$type <- alphabet_type
     df$model_strand = model_strand
     return(df)
 }
