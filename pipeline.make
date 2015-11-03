@@ -51,7 +51,7 @@ NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
 .DEFAULT_GOAL := all
 all: training_plots_abcMG_event_mean.pdf ProHum20kb_cpg_island_plot.pdf
-all-trained: M.SssI.ecoli_e2925.sqk006.sorted.bam.methyltrain.tsv loman.ecoli_k12.pcr.sqk006.sorted.bam.methyltrain.tsv
+all-trained: ecoli_e2925.native.timp_alphabet_nucleotide.fofn ecoli_k12.pcr.loman_alphabet_nucleotide.fofn
 
 ##################################################
 #
@@ -66,20 +66,20 @@ all-trained: M.SssI.ecoli_e2925.sqk006.sorted.bam.methyltrain.tsv loman.ecoli_k1
 #
 # Define variables for each data set
 #
-ECOLI_K12_DATA=loman.ecoli_k12.sqk006.fasta
-ECOLI_K12_PCR_DATA=loman.ecoli_k12.pcr.sqk006.fasta
-ECOLI_E2925_MSSSI_DATA=M.SssI.ecoli_e2925.sqk006.fasta
-ECOLI_E2925_NATIVE_DATA=native.ecoli_e2925.sqk006.fasta
+ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.fasta
+ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.fasta
+ECOLI_E2925_MSSSI_DATA=ecoli_e2925.M.SssI.timp.fasta
+ECOLI_E2925_NATIVE_DATA=ecoli_e2925.native.timp.fasta
 
 LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
 
 #HUMAN_NA12878_DATA=093015.NA12878.fasta
 #HUMAN_NA12878_DATA=oicr.run1.wash.NA12878.fasta
-HUMAN_NA12878_DATA=NA12878.merged.fasta
+HUMAN_NA12878_DATA=NA12878.native.merged.fasta
 
 # For each data set that we use, define a variable containing its reference
-$(ECOLI_K12_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
@@ -93,8 +93,8 @@ $(HUMAN_NA12878_DATA)_REFERENCE=human_g1k_v37.fasta
 # These variables control which datasets are used to train the model, test, etc
 #
 PCR_TRAINING_FASTA=$(ECOLI_K12_PCR_DATA)
-DAM_TRAINING_FASTA=$(ECOLI_K12_DATA)
-DCM_TRAINING_FASTA=$(ECOLI_K12_DATA)
+DAM_TRAINING_FASTA=$(ECOLI_K12_NATIVE_DATA)
+DCM_TRAINING_FASTA=$(ECOLI_K12_NATIVE_DATA)
 MSSSI_TRAINING_FASTA=$(ECOLI_E2925_MSSSI_DATA)
 MSSSI_CONTROL_FASTA=$(ECOLI_E2925_NATIVE_DATA)
 TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
@@ -137,12 +137,12 @@ PORETOOLS=poretools
 	cat $^ > $@
 
 # Special case for data sets with multiple runs that must be joined together
-$(ECOLI_E2925_MSSSI_DATA): M.SssI.ecoli_e2925.sqk006.run1.fasta M.SssI.ecoli_e2925.sqk006.run2.fasta
+$(ECOLI_E2925_MSSSI_DATA): ecoli_e2925.M.SssI.timp.run1.fasta ecoli_e2925.M.SssI.timp.run2.fasta
 	cat $^ > $@
 
-$(HUMAN_NA12878_DATA): 093015.NA12878.fasta \
-                       oicr.run1.wash.NA12878.fasta \
-                       oicr.run2.NA12878.fasta
+$(HUMAN_NA12878_DATA): NA12878.native.timp.fasta \
+                       NA12878.native.simpson.run1.fasta \
+                       NA12878.native.simpson.run2.fasta
 	cat $^ > $@
 
 ##################################################
@@ -185,172 +185,98 @@ $(HUMAN_NA12878_DATA): 093015.NA12878.fasta \
 %.fofn: t.006.%.model c.p1.006.%.model c.p2.006.%.model
 	echo $^ | tr " " "\n" > $@
 
-#
-# 3a. First, train using PCR-treated data. The
-#     trained model should be similar to ONT's
-#     model.
-#
+define generate-training-rules
 
-#
-PCR_ECOLI_TRAINED=pcr.ecoli_k12.trained
-$(PCR_ECOLI_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE) ont.fofn
+$(eval DATASET=$(basename $1))
+$(eval ALPHABET=$2)
+$(eval PREFIX=$(DATASET)_alphabet_$(ALPHABET))
+
+# Training rule
+$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(PCR_ECOLI_TRAINED).model \
-                                      -m ont.fofn \
-                                      -b $(PCR_TRAINING_BAM) \
-                                      -r $(PCR_TRAINING_FASTA) \
-                                      -g $(TRAINING_REFERENCE) \
-                                      $(TRAINING_REGION) 
+                                      --out-fofn $$@ \
+                                      --out-suffix .$$*.model \
+                                      -m ont.alphabet_$(ALPHABET).fofn \
+                                      -b $(DATASET).sorted.bam \
+                                      -r $(DATASET).fasta \
+                                      -g $(TRAINING_REFERENCE).alphabet_$(ALPHABET) \
+                                      $(TRAINING_REGION)
 
-# These files are built at the same time as output fofn. These rules make sure they get updated.
-t.006.$(PCR_ECOLI_TRAINED).model: $(PCR_ECOLI_TRAINED).fofn
-c.p1.006.$(PCR_ECOLI_TRAINED).model: $(PCR_ECOLI_TRAINED).fofn
-c.p2.006.$(PCR_ECOLI_TRAINED).model: $(PCR_ECOLI_TRAINED).fofn
-$(PCR_TRAINING_BAM).methyltrain.tsv: $(PCR_ECOLI_TRAINED).fofn
+# Rules for additional files made by methyltrain
+t.006.$(PREFIX).model: $(PREFIX).fofn
+c.p1.006.$(PREFIX).model: $(PREFIX).fofn
+c.p2.006.$(PREFIX).model: $(PREFIX).fofn
+$(DATASET).sorted.bam.methyltrain.tsv: $(PREFIX).fofn
+
+endef
+
 
 #
-# 3b. Train the mCpG using the M.SssI treated ecoli data
+# 3a. Train over a normal nucleotide (ACGT) alphabet
+#
+
+# Special case, the transformed reference for the nucleotide alphabet is just the reference
+$(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
+	ln -s $< $@
+
+# Special case, the expanded model for the nucleotide alphabet is just the ONT model
+%.alphabet_nucleotide.model: %.model
+	ln -s $< $@
+	
+$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),nucleotide))
+
+#
+# 3b. Train over a CpG alphabet
 #
 
 # Expand the alphabet to include 5-mC k-mers
-%.cpg_expanded.model: %.model
-	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet CpG $< > $@
+%.alphabet_cpg.model: %.model
+	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet cpg $< > $@
 
 # Convert all CG dinucleotides of the reference genome to MG
-$(TRAINING_REFERENCE).cpg_methylated: $(TRAINING_REFERENCE) pythonlibs.version
-	python $(ROOT_DIR)/methylate_reference.py --recognition CpG $< > $@
+$(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
+	python $(ROOT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
-# Train the model
-MSSSI_ECOLI_TRAINED=M.SssI.ecoli_e2925.trained
-$(MSSSI_ECOLI_TRAINED).fofn: $(MSSSI_TRAINING_BAM) $(MSSSI_TRAINING_BAM:.bam=.bam.bai) $(MSSSI_TRAINING_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.cpg_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
-                                      --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(MSSSI_ECOLI_TRAINED).model \
-                                      -m ont.cpg_expanded.fofn \
-                                      -b $(MSSSI_TRAINING_BAM) \
-                                      -r $(MSSSI_TRAINING_FASTA) \
-                                      -g $(TRAINING_REFERENCE).cpg_methylated \
-                                      $(TRAINING_REGION)
+# train 
+$(eval $(call generate-training-rules,$(ECOLI_E2925_MSSSI_DATA),cpg))
 
-t.006.$(MSSSI_ECOLI_TRAINED).model: $(MSSSI_ECOLI_TRAINED).fofn
-c.p1.006.$(MSSSI_ECOLI_TRAINED).model: $(MSSSI_ECOLI_TRAINED).fofn
-c.p2.006.$(MSSSI_ECOLI_TRAINED).model: $(MSSSI_ECOLI_TRAINED).fofn
-$(MSSSI_TRAINING_BAM).methyltrain.tsv: $(MSSSI_ECOLI_TRAINED).fofn
-
-# Perform the training with the unmethylated E2925 data as a negative control
-MSSSI_CONTROL_TRAINED=native.ecoli_e2925.trained
-$(MSSSI_CONTROL_TRAINED).fofn: $(MSSSI_CONTROL_BAM) $(MSSSI_CONTROL_BAM:.bam=.bam.bai) $(MSSSI_CONTROL_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.cpg_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
-                                      --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(MSSSI_CONTROL_TRAINED).model \
-                                      -m ont.cpg_expanded.fofn \
-                                      -b $(MSSSI_CONTROL_BAM) \
-                                      -r $(MSSSI_CONTROL_FASTA) \
-                                      -g $(TRAINING_REFERENCE).cpg_methylated \
-                                      $(TRAINING_REGION)
-
-t.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
-c.p1.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
-c.p2.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
-$(MSSSI_CONTROL_BAM).methyltrain.tsv: $(MSSSI_CONTROL_TRAINED).fofn
-
-
-PCR_ECOLI_CPG_TRAINED=pcr.ecoli_k12.cpg.trained
-$(PCR_ECOLI_CPG_TRAINED).fofn: $(PCR_TRAINING_BAM) $(PCR_TRAINING_BAM:.bam=.bam.bai) $(PCR_TRAINING_FASTA) $(TRAINING_REFERENCE).cpg_methylated ont.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
-                                      --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(PCR_ECOLI_CPG_TRAINED).model \
-                                      -m ont.cpg_expanded.fofn \
-                                      -b $(PCR_TRAINING_BAM) \
-                                      -r $(PCR_TRAINING_FASTA) \
-                                      -g $(TRAINING_REFERENCE).cpg_methylated \
-                                      $(TRAINING_REGION) 
-
-# Perform the training with the unmethylated E2925 data as a negative control
-MSSSI_CONTROL_K12_TRAINED=native.ecoli_e2925.k12.trained
-$(MSSSI_CONTROL_K12_TRAINED).fofn: $(MSSSI_CONTROL_BAM) $(MSSSI_CONTROL_BAM:.bam=.bam.bai) $(MSSSI_CONTROL_FASTA) $(TRAINING_REFERENCE) ont.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
-                                      --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(MSSSI_CONTROL_K12_TRAINED).model \
-                                      -m ont.fofn \
-                                      -b $(MSSSI_CONTROL_BAM) \
-                                      -r $(MSSSI_CONTROL_FASTA) \
-                                      -g $(TRAINING_REFERENCE) \
-                                      $(TRAINING_REGION)
-
-t.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
-c.p1.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
-c.p2.006.$(MSSSI_CONTROL_TRAINED).model: $(MSSSI_CONTROL_TRAINED).fofn
-$(MSSSI_CONTROL_BAM).methyltrain.tsv: $(MSSSI_CONTROL_TRAINED).fofn
-
+# negative controls
+$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),cpg))
 
 #
 # 3c. Train the dam model
 #
 
 # Expand the alphabet of the pcr-trained model to include 5-mC k-mers
-%.dam_expanded.model: %.model
+%.alphabet_dam.model: %.model
 	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet dam $< > $@
 
 # Convert all GATC sequences of the reference genome to GMTC
-$(TRAINING_REFERENCE).dam.methylated: $(TRAINING_REFERENCE) pythonlibs.version
+$(TRAINING_REFERENCE).alphabet_dam: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py --recognition dam $< > $@
 
-# Train the model with methylated 5-mers
-DAM_ECOLI_TRAINED=dam.ecoli_k12.trained
-$(DAM_ECOLI_TRAINED).fofn: $(DAM_TRAINING_BAM) $(DAM_TRAINING_BAM:.bam=.bam.bai) $(DAM_TRAINING_FASTA) $(TRAINING_REFERENCE).dam.methylated ont.dam_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
-                                      --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(DAM_ECOLI_TRAINED).model \
-                                      -m ont.dam_expanded.fofn \
-                                      -b $(DAM_TRAINING_BAM) \
-                                      -r $(DAM_TRAINING_FASTA) \
-                                      -g $(TRAINING_REFERENCE).dam.methylated \
-                                      $(TRAINING_REGION)
-
-t.006.$(DAM_ECOLI_TRAINED).model: $(DAM_ECOLI_TRAINED).fofn
-c.p1.006.$(DAM_ECOLI_TRAINED).model: $(DAM_ECOLI_TRAINED).fofn
-c.p2.006.$(DAM_ECOLI_TRAINED).model: $(DAM_ECOLI_TRAINED).fofn
-$(DAM_TRAINING_BAM).methyltrain.tsv: $(DAM_ECOLI_TRAINED).fofn
+$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dam))
 
 #
 # 3d. Train the dcm model
 #
 
 #
-%.dcm_expanded.model: %.model
+%.alphabet_dcm.model: %.model
 	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet dcm $< > $@
 
-# Convert all dcm sequences of the reference genome to GMTC
-$(TRAINING_REFERENCE).dcm.methylated: $(TRAINING_REFERENCE) pythonlibs.version
+# Convert all dcm sequences of the reference genome
+$(TRAINING_REFERENCE).alphabet_dcm: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py --recognition dcm $< > $@
 
-# Train the model with methylated 5-mers
-DCM_ECOLI_TRAINED=dcm.ecoli_k12.trained
-$(DCM_ECOLI_TRAINED).fofn: $(DCM_TRAINING_BAM) $(DCM_TRAINING_BAM:.bam=.bam.bai) $(DCM_TRAINING_FASTA) $(TRAINING_REFERENCE).dcm.methylated ont.dcm_expanded.fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
-                                      --train-kmers all \
-                                      --out-fofn $@ \
-                                      --out-suffix .$(DCM_ECOLI_TRAINED).model \
-                                      -m ont.dcm_expanded.fofn \
-                                      -b $(DCM_TRAINING_BAM) \
-                                      -r $(DCM_TRAINING_FASTA) \
-                                      -g $(TRAINING_REFERENCE).dcm.methylated \
-                                      $(TRAINING_REGION)
+$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dcm))
 
-t.006.$(DCM_ECOLI_TRAINED).model: $(DCM_ECOLI_TRAINED).fofn
-c.p1.006.$(DCM_ECOLI_TRAINED).model: $(DCM_ECOLI_TRAINED).fofn
-c.p2.006.$(DCM_ECOLI_TRAINED).model: $(DCM_ECOLI_TRAINED).fofn
-$(DCM_TRAINING_BAM).methyltrain.tsv: $(DCM_ECOLI_TRAINED).fofn
-
-# Make training plots
+#
+# 3e. Make training plots
+#
 training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R training_plots $^
 	cp $@ $@.$(NOW).pdf

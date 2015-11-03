@@ -16,7 +16,7 @@ args = parser.parse_args()
 recognition_sites = list()
 recognition_sites_methylated = list()
 
-if args.recognition == "CpG":
+if args.recognition == "cpg":
     recognition_sites = ["CG"]
     recognition_sites_methylated = ["MG"]
 elif args.recognition == "dam":
