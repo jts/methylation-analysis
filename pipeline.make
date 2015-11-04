@@ -51,7 +51,10 @@ NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
 .DEFAULT_GOAL := all
 all: training_plots_abcMG_event_mean.pdf ProHum20kb_cpg_island_plot.pdf
-all-trained: ecoli_e2925.native.timp_alphabet_nucleotide.fofn ecoli_k12.pcr.loman_alphabet_nucleotide.fofn
+all-trained: ecoli_e2925.native.timp_alphabet_nucleotide.fofn \
+             ecoli_e2925.native.timp_alphabet_cpg.fofn \
+             ecoli_k12.pcr.loman_alphabet_nucleotide.fofn \
+             ecoli_k12.pcr.loman_alphabet_cpg.fofn
 
 ##################################################
 #
@@ -70,6 +73,7 @@ ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.fasta
 ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.fasta
 ECOLI_E2925_MSSSI_DATA=ecoli_e2925.M.SssI.timp.fasta
 ECOLI_E2925_NATIVE_DATA=ecoli_e2925.native.timp.fasta
+ECOLI_E2925_NATIVE_FILTERED_DATA=ecoli_e2925.native.timp.filtered.fasta
 
 LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -83,6 +87,7 @@ $(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_E2925_NATIVE_FILTERED_DATA)_REFERENCE=ecoli_k12.fasta
 
 #$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 #$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
@@ -192,11 +197,11 @@ $(eval ALPHABET=$2)
 $(eval PREFIX=$(DATASET)_alphabet_$(ALPHABET))
 
 # Training rule
-$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
+$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
 	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $$@ \
-                                      --out-suffix .$$*.model \
+                                      --out-suffix .$(PREFIX).model \
                                       -m ont.alphabet_$(ALPHABET).fofn \
                                       -b $(DATASET).sorted.bam \
                                       -r $(DATASET).fasta \
@@ -226,6 +231,7 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_FILTERED_DATA),nucleotide))
 
 #
 # 3b. Train over a CpG alphabet
