@@ -77,18 +77,16 @@ print("#alphabet\t" + args.alphabet)
 translation_table = maketrans(from_char, to_char)
 
 IDX_LEVEL_STDV = 1
-IDX_SD_STDV = 3
 
 # Set the values for the methylated k-mers depending upon the non-methylated versions
 for kmer in model:
     no_m_kmer = kmer.translate(translation_table)
     values = list(model[no_m_kmer])
     
-    # we offset level_stdv, sd_stdv when the kmer contains a methylated site
+    # we offset level_stdv when the kmer contains a methylated site
     # to provide a bit of separation between the gaussians
     if kmer.find('M') >= 0:
         values[IDX_LEVEL_STDV] = float(values[IDX_LEVEL_STDV]) + 1
-        values[IDX_SD_STDV] = float(values[IDX_SD_STDV]) + 1
     model[kmer] = tuple(values)
 
 for key in sorted(model):
