@@ -45,6 +45,12 @@ bedtools.version:
 	cd bedtools; make
 	-cd bedtools; git log | head -1 > ../$@
 
+# Install spades
+spades.version:
+	wget http://spades.bioinf.spbau.ru/release3.6.1/SPAdes-3.6.1-Linux.tar.gz
+	tar -xzf SPAdes-3.6.1-Linux.tar.gz
+	ls SPA* > $@
+
 # timestamp for saving different versions of plots
 # http://stackoverflow.com/questions/12463770/insert-time-stamp-into-executable-name-using-makefile
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
@@ -74,6 +80,7 @@ ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.fasta
 ECOLI_E2925_MSSSI_DATA=ecoli_e2925.M.SssI.timp.fasta
 ECOLI_E2925_NATIVE_DATA=ecoli_e2925.native.timp.fasta
 ECOLI_E2925_NATIVE_FILTERED_DATA=ecoli_e2925.native.timp.filtered.fasta
+ECOLI_E2925_NATIVE_CUT1_DATA=ecoli_e2925.native.timp.cut1.fasta
 
 LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -88,6 +95,7 @@ $(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_NATIVE_FILTERED_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_E2925_NATIVE_CUT1_DATA)_REFERENCE=ecoli_k12.fasta
 
 #$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 #$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
@@ -149,6 +157,15 @@ $(HUMAN_NA12878_DATA): NA12878.native.timp.fasta \
                        NA12878.native.simpson.run1.fasta \
                        NA12878.native.simpson.run2.fasta
 	cat $^ > $@
+
+# Assemble the E2925 genome
+ecoli_e2925.assembly.fasta: spades.version ecoli_e2925.native.timp-illlumina.R1.fastq.gz ecoli_e2925.native.timp-illlumina.R2.fastq.gz ecoli_e2925.native.timp.fasta
+	SPAdes-3.6.1-Linux/bin/spades.py -1 ecoli_e2925.native.timp-illlumina.R1.fastq.gz \
+                                     -2 ecoli_e2925.native.timp-illlumina.R2.fastq.gz \
+                                     --nanopore ecoli_e2925.native.timp.fasta \
+                                     -t $(THREADS) \
+                                     --careful \
+                                     -o ecoli_e2925.assembly
 
 ##################################################
 #
@@ -232,6 +249,7 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_FILTERED_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_CUT1_DATA),nucleotide))
 
 #
 # 3b. Train over a CpG alphabet
