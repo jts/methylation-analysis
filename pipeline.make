@@ -79,8 +79,7 @@ ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.fasta
 ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.fasta
 ECOLI_E2925_MSSSI_DATA=ecoli_e2925.M.SssI.timp.fasta
 ECOLI_E2925_NATIVE_DATA=ecoli_e2925.native.timp.fasta
-ECOLI_E2925_NATIVE_FILTERED_DATA=ecoli_e2925.native.timp.filtered.fasta
-ECOLI_E2925_NATIVE_CUT1_DATA=ecoli_e2925.native.timp.cut1.fasta
+ECOLI_E2925_NATIVE_RERUN_DATA=ecoli_e2925.native.timp.rerun.fasta
 
 LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
 LAMBDA_CONTROL_DATA=control.lambda.fasta
@@ -94,8 +93,7 @@ $(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_E2925_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_NATIVE_FILTERED_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_NATIVE_CUT1_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_E2925_NATIVE_RERUN_DATA)_REFERENCE=ecoli_k12.fasta
 
 #$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 #$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
@@ -248,8 +246,7 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_FILTERED_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_CUT1_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_RERUN_DATA),nucleotide))
 
 #
 # 3b. Train over a CpG alphabet
