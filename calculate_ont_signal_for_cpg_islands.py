@@ -4,11 +4,14 @@ import math
 import sys
 from collections import namedtuple
 
+call_threshold = 2.5
+
 class IslandStats:
     def __init__(self):
         self.n = 0
         self.total = 0
         self.sum_posterior = 0
+        self.estimated_methylated_sites = 0
 
 island = dict()
 
@@ -24,12 +27,16 @@ for line in sys.stdin:
         island[key] = IslandStats()
         island[key].gene = i_kv_dict['Gene']
 
-    island[key].n += 1
     ll = float(s_kv_dict['LL_RATIO'])
-    island[key].total += ll
-    island[key].sum_posterior += float(1 / (1 + math.exp(-ll)))
+    
+    if abs(ll) > call_threshold:
+        island[key].n += 1
+        island[key].total += ll
+        island[key].sum_posterior += float(1 / (1 + math.exp(-ll)))
+        island[key].estimated_methylated_sites += ll > 0
+
 # header
-print "\t".join(["key", "n_ont_sites", "sum_ll_ratio", "sum_posterior", "gene"])
+print "\t".join(["key", "n_ont_sites", "sum_ll_ratio", "sum_posterior", "estimated_methylated_sites", "gene"])
 
 for key in island:
-    print "\t".join([str(x) for x in [key, island[key].n, island[key].total, island[key].sum_posterior, island[key].gene]])
+    print "\t".join([str(x) for x in [key, island[key].n, island[key].total, island[key].sum_posterior, island[key].estimated_methylated_sites, island[key].gene]])

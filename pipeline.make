@@ -56,11 +56,18 @@ spades.version:
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
 .DEFAULT_GOAL := all
-all: training_plots_abcMG_event_mean.pdf ProHum20kb_cpg_island_plot.pdf
-all-trained: ecoli_e2925.native.timp_alphabet_nucleotide.fofn \
-             ecoli_e2925.native.timp_alphabet_cpg.fofn \
-             ecoli_k12.pcr.loman_alphabet_nucleotide.fofn \
-             ecoli_k12.pcr.loman_alphabet_cpg.fofn
+all: training_plots_abcMG_event_mean.pdf
+
+all-nucleotide: ecoli_e2925.native.timp.alphabet_nucleotide.fofn \
+                ecoli_e2925.pcr.timp.alphabet_nucleotide.fofn \
+                ecoli_e2925.pcr_M.SssI.timp.alphabet_nucleotide.fofn \
+                ecoli_k12.native.loman.alphabet_nucleotide.fofn \
+                ecoli_k12.pcr.loman.alphabet_nucleotide.fofn
+
+all-cpg: ecoli_e2925.native.timp.alphabet_cpg.fofn \
+         ecoli_e2925.pcr.timp.alphabet_cpg.fofn \
+         ecoli_e2925.pcr_M.SssI.timp.alphabet_cpg.fofn \
+         ecoli_k12.pcr.loman.alphabet_cpg.fofn
 
 ##################################################
 #
@@ -88,7 +95,9 @@ LAMBDA_CONTROL_DATA=control.lambda.fasta
 
 #HUMAN_NA12878_DATA=093015.NA12878.fasta
 #HUMAN_NA12878_DATA=oicr.run1.wash.NA12878.fasta
-HUMAN_NA12878_DATA=NA12878.native.merged.fasta
+HUMAN_NA12878_NATIVE_DATA=NA12878.native.merged.fasta
+HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.fasta
+HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_M.SssI.simpson.run2.fasta
 
 # For each data set that we use, define a variable containing its reference
 $(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
@@ -102,7 +111,9 @@ $(ECOLI_E2925_PCR_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 #$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
 #$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
 
-$(HUMAN_NA12878_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_NATIVE_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_PCR_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=human_g1k_v37.fasta
 
 #
 # These variables control which datasets are used to train the model, test, etc
@@ -213,7 +224,7 @@ define generate-training-rules
 
 $(eval DATASET=$(basename $1))
 $(eval ALPHABET=$2)
-$(eval PREFIX=$(DATASET)_alphabet_$(ALPHABET))
+$(eval PREFIX=$(DATASET).alphabet_$(ALPHABET))
 
 # Training rule
 $(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
@@ -273,6 +284,8 @@ $(eval $(call generate-training-rules,$(ECOLI_E2925_MSSSI_DATA),cpg))
 # negative controls
 $(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_E2925_PCR_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_E2925_PCR_MSSSI_DATA),cpg))
 
 #
 # 3c. Train the dam model
@@ -314,12 +327,12 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai M.SssI.ecoli_e2925.trained.fofn
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai ecoli_e2925.pcr_M.SssI.timp.alphabet_cpg.fofn
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-                                      -m M.SssI.ecoli_e2925.trained.fofn \
+                                      -m ecoli_e2925.pcr_M.SssI.timp.alphabet_cpg.fofn \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
                                       -g $(TMP_REF)
@@ -375,7 +388,7 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
                                         -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
         python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py > $@
 
-%_cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
+%.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
 	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 	cp $@ $@.$(NOW).pdf
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf

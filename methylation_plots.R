@@ -319,7 +319,7 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$near_gene = merged$gene.x != "."
-    ggplot(merged, aes(bisulfite_percent_methylated, sum_posterior / n_ont_sites, color=near_gene)) + 
+    ggplot(merged, aes(bisulfite_percent_methylated, estimated_methylated_sites / n_ont_sites, color=near_gene)) + 
         geom_point() +
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
         ylab("Posterior estimate of percent methylated (ont)") +
@@ -343,7 +343,7 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
    print(cor_shuffled)
 
    # plot histograms
-   p1 <- ggplot(ont, aes(100 * sum_posterior / n_ont_sites, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
+   p1 <- ggplot(ont, aes(100 * estimated_methylated_sites / n_ont_sites, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
    #p1 <- ggplot(ont, aes(sum_posterior / n_ont_sites, fill=gene != ".")) + geom_density(alpha=0.5)
    p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
    pdf("histogram.pdf")
