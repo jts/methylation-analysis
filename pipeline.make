@@ -45,12 +45,6 @@ bedtools.version:
 	cd bedtools; make
 	-cd bedtools; git log | head -1 > ../$@
 
-# Install spades
-spades.version:
-	wget http://spades.bioinf.spbau.ru/release3.6.1/SPAdes-3.6.1-Linux.tar.gz
-	tar -xzf SPAdes-3.6.1-Linux.tar.gz
-	ls SPA* > $@
-
 # timestamp for saving different versions of plots
 # http://stackoverflow.com/questions/12463770/insert-time-stamp-into-executable-name-using-makefile
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
@@ -58,15 +52,15 @@ NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 .DEFAULT_GOAL := all
 all: training_plots_abcMG_event_mean.pdf
 
-all-nucleotide: ecoli_e2925.native.timp.alphabet_nucleotide.fofn \
-                ecoli_e2925.pcr.timp.alphabet_nucleotide.fofn \
-                ecoli_e2925.pcr_M.SssI.timp.alphabet_nucleotide.fofn \
-                ecoli_k12.native.loman.alphabet_nucleotide.fofn \
-                ecoli_k12.pcr.loman.alphabet_nucleotide.fofn
+all-nucleotide: ecoli_er2925.native.timp.102615.alphabet_nucleotide.fofn \
+                ecoli_er2925.native.timp.110915.alphabet_nucleotide.fofn \
+                ecoli_er2925.pcr.timp.113015.alphabet_nucleotide.fofn \
+                ecoli_er2925.pcr_MSssI.timp.113015.alphabet_nucleotide.fofn 
+                #ecoli_k12.native.loman.alphabet_nucleotide.fofn \
+                #ecoli_k12.pcr.loman.alphabet_nucleotide.fofn
 
-all-cpg: ecoli_e2925.native.timp.alphabet_cpg.fofn \
-         ecoli_e2925.pcr.timp.alphabet_cpg.fofn \
-         ecoli_e2925.pcr_M.SssI.timp.alphabet_cpg.fofn \
+all-cpg: ecoli_er2925.pcr.timp.alphabet_cpg.fofn \
+         ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn \
          ecoli_k12.pcr.loman.alphabet_cpg.fofn
 
 ##################################################
@@ -75,110 +69,97 @@ all-cpg: ecoli_e2925.native.timp.alphabet_cpg.fofn \
 #
 ##################################################
 
-# Convert a directory of FAST5 files to fasta using readtofasta.py
-#%.fasta: %.fast5
-#	python $(ROOT_DIR)/readtofasta.py $</ > $@
+DATA_ROOT=../data
 
 #
 # Define variables for each data set
 #
-ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.fasta
-ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.fasta
-ECOLI_E2925_MSSSI_DATA=ecoli_e2925.M.SssI.timp.fasta
-ECOLI_E2925_PCR_DATA=ecoli_e2925.pcr.timp.fasta
-ECOLI_E2925_PCR_MSSSI_DATA=ecoli_e2925.pcr_M.SssI.timp.fasta
-ECOLI_E2925_NATIVE_DATA=ecoli_e2925.native.timp.fasta
-ECOLI_E2925_NATIVE_RERUN_DATA=ecoli_e2925.native.timp.rerun.fasta
+ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.run1.fasta
+ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.run1.fasta
 
-LAMBDA_MSSSI_DATA=M.SssI.lambda.fasta
-LAMBDA_CONTROL_DATA=control.lambda.fasta
+ECOLI_ER2925_NATIVE_RUN1_DATA=ecoli_er2925.native.timp.102615.fasta
+ECOLI_ER2925_NATIVE_RUN2_DATA=ecoli_er2925.native.timp.110915.fasta
 
-#HUMAN_NA12878_DATA=093015.NA12878.fasta
-#HUMAN_NA12878_DATA=oicr.run1.wash.NA12878.fasta
-HUMAN_NA12878_NATIVE_DATA=NA12878.native.merged.fasta
-HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.fasta
-HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_M.SssI.simpson.run2.fasta
+ECOLI_ER2925_MSSSI_RUN1_DATA=ecoli_er2925.MSssI.timp.100215.fasta
+ECOLI_ER2925_MSSSI_RUN2_DATA=ecoli_er2925.MSssI.timp.100615.fasta
+
+ECOLI_ER2925_PCR_DATA=ecoli_er2925.pcr.timp.113015.fasta
+ECOLI_ER2925_PCR_MSSSI_DATA=ecoli_er2925.pcr_MSssI.timp.113015.fasta
+
+HUMAN_NA12878_NATIVE_RUN1_DATA=NA12878.native.timp.093015.fasta
+HUMAN_NA12878_NATIVE_RUN2_DATA=NA12878.native.simpson.101515.fasta
+HUMAN_NA12878_NATIVE_RUN3_DATA=NA12878.native.simpson.103015.fasta
+
+HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.021616.fasta
+HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
 
 # For each data set that we use, define a variable containing its reference
 $(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_NATIVE_RERUN_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_PCR_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_E2925_PCR_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
 
-#$(LAMBDA_MSSI_DATA)_REFERENCE=lambda.reference.fasta
-#$(LAMBDA_CONTROL_DATA)_REFERENCE=lambda.reference.fasta
+$(ECOLI_ER2925_NATIVE_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_NATIVE_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
 
-$(HUMAN_NA12878_NATIVE_DATA)_REFERENCE=human_g1k_v37.fasta
+$(ECOLI_ER2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
+
+$(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_PCR_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=human_g1k_v37.fasta
 
-#
-# These variables control which datasets are used to train the model, test, etc
-#
-PCR_TRAINING_FASTA=$(ECOLI_K12_PCR_DATA)
-DAM_TRAINING_FASTA=$(ECOLI_K12_NATIVE_DATA)
-DCM_TRAINING_FASTA=$(ECOLI_K12_NATIVE_DATA)
-MSSSI_TRAINING_FASTA=$(ECOLI_E2925_MSSSI_DATA)
-MSSSI_CONTROL_FASTA=$(ECOLI_E2925_NATIVE_DATA)
-TRAINING_REGION="gi|556503834|ref|NC_000913.3|:50000-3250000"
-
-#TEST_FASTA=$(LAMBDA_MSSSI_DATA)
-#TEST_CONTROL_FASTA=$(LAMBDA_CONTROL_DATA)
-
-#
-# These are derived convenience variables and should not be manually set
-# 
-# Derive dependent file names
-
-# Reference file for training, must be the same for all training sets
-TRAINING_REFERENCE=$($(PCR_TRAINING_FASTA)_REFERENCE)
+# Reference file used for model training, must be the same for all training sets
+TRAINING_REFERENCE=ecoli_k12.fasta
+TRAINING_REGION="Chromosome:50000-3250000"
 METHYLTRAIN_EXTRA_OPTS = 
-
-# BAM file names
-PCR_TRAINING_BAM=$(PCR_TRAINING_FASTA:.fasta=.sorted.bam)
-DAM_TRAINING_BAM=$(DAM_TRAINING_FASTA:.fasta=.sorted.bam)
-DCM_TRAINING_BAM=$(DCM_TRAINING_FASTA:.fasta=.sorted.bam)
-MSSSI_TRAINING_BAM=$(MSSSI_TRAINING_FASTA:.fasta=.sorted.bam)
-MSSSI_CONTROL_BAM=$(MSSSI_CONTROL_FASTA:.fasta=.sorted.bam)
-
-TEST_REFERENCE=$($(TEST_FASTA)_REFERENCE)
-TEST_BAM=$(TEST_FASTA:.fasta=.sorted.bam)
-TEST_CONTROL_BAM=$(TEST_CONTROL_FASTA:.fasta=.sorted.bam)
 
 # Convert a FAST5 file to FASTA using poretools
 PORETOOLS=poretools
 
+#
+# Download data
+#
+
+# In this Makefile we default to wget for portability.
+# It is highly recommended that you use aspera instead as the transfer will
+# go much faster. If you want to use aspera change this variable to the path
+# to a bash script that implements the aspera download. See download_from_aspera.sh
+# in this directory for an example that you will have to modify to use your key pair.
+
+#DOWNLOADER=/path/to/download_from_aspera.sh
+DOWNLOADER=wget
+
+$(DATA_ROOT)/ecoli_k12.native.loman.240915.fast5:
+	cd $(DATA_ROOT)	&& $(DOWNLOADER) ftp://ftp.sra.ebi.ac.uk/vol1/ERA540/ERA540530/oxfordnanopore_native/MAP006-1.tar
+	#cd $(DATA_ROOT) && tar -xf MAP006-1.tar
+
+# Reference genomes
+ecoli_k12.fasta:
+	wget ftp://ftp.ensemblgenomes.org/pub/release-29/bacteria//fasta/bacteria_0_collection/escherichia_coli_str_k_12_substr_mg1655/dna/Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
+	gunzip Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
+	mv Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa $@
+
+#
+# Rules for generating fasta files from FAST5
+#
+
 # Pass reads
-%.pass.fasta: %.fast5/pass
+%.pass.fasta: $(DATA_ROOT)/%.fast5/pass
 	$(PORETOOLS) fasta --type 2D $< > $@
 
 # Fail reads
-%.fail.fasta: %.fast5/fail
+%.fail.fasta: $(DATA_ROOT)/%.fast5/fail
 	$(PORETOOLS) fasta --type 2D $< > $@
 
 %.fasta: %.pass.fasta %.fail.fasta
 	cat $^ > $@
 
-# Special case for data sets with multiple runs that must be joined together
-$(ECOLI_E2925_MSSSI_DATA): ecoli_e2925.M.SssI.timp.run1.fasta ecoli_e2925.M.SssI.timp.run2.fasta
+$(HUMAN_NA12878_DATA): NA12878.native.timp.run1.fasta \
+                       NA12878.native.simpson.run2.fasta \
+                       NA12878.native.simpson.run3.fasta
 	cat $^ > $@
-
-$(HUMAN_NA12878_DATA): NA12878.native.timp.fasta \
-                       NA12878.native.simpson.run1.fasta \
-                       NA12878.native.simpson.run2.fasta
-	cat $^ > $@
-
-# Assemble the E2925 genome
-ecoli_e2925.assembly.fasta: spades.version ecoli_e2925.native.timp-illlumina.R1.fastq.gz ecoli_e2925.native.timp-illlumina.R2.fastq.gz ecoli_e2925.native.timp.fasta
-	SPAdes-3.6.1-Linux/bin/spades.py -1 ecoli_e2925.native.timp-illlumina.R1.fastq.gz \
-                                     -2 ecoli_e2925.native.timp-illlumina.R2.fastq.gz \
-                                     --nanopore ecoli_e2925.native.timp.fasta \
-                                     -t $(THREADS) \
-                                     --careful \
-                                     -o ecoli_e2925.assembly
 
 ##################################################
 #
@@ -187,14 +168,15 @@ ecoli_e2925.assembly.fasta: spades.version ecoli_e2925.native.timp-illlumina.R1.
 ##################################################
 
 # Index a reference genome with BWA
-%.fasta.bwt: %.fasta
+%.fasta.bwt: %.fasta bwa.version
 	bwa/bwa index $<
 
 # We use secondary expansion to construct the name of the variable
 # containing the reference genome for this sample
 .SECONDEXPANSION:
 %.sorted.bam: %.fasta $$(%.fasta_REFERENCE) $$(%.fasta_REFERENCE).bwt bwa.version samtools.version
-	bwa/bwa mem -t $(THREADS) -x ont2d $($*.fasta_REFERENCE) $< | \
+	SGE_RREQ="-l h_vmem=4G -l h_stack=32M -pe smp $(THREADS)" \
+    bwa/bwa mem -t $(THREADS) -x ont2d $($*.fasta_REFERENCE) $< | \
         samtools/samtools view -Sb - | \
         samtools/samtools sort -f - $@
 
@@ -228,7 +210,8 @@ $(eval PREFIX=$(DATASET).alphabet_$(ALPHABET))
 
 # Training rule
 $(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
-	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
+	SGE_RREQ="-l h_vmem=4G -l h_stack=32M -pe smp $(THREADS)" \
+    nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $$@ \
                                       --out-suffix .$(PREFIX).model \
@@ -261,10 +244,11 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	
 $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_RERUN_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_PCR_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_PCR_MSSSI_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RERUN_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_DATA),nucleotide))
 
 #
 # 3b. Train over a CpG alphabet
@@ -279,13 +263,14 @@ $(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(ROOT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
 # train 
-$(eval $(call generate-training-rules,$(ECOLI_E2925_MSSSI_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_MSSSI_DATA),cpg))
 
 # negative controls
-$(eval $(call generate-training-rules,$(ECOLI_E2925_NATIVE_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_PCR_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_E2925_PCR_MSSSI_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_DATA),cpg))
 
 #
 # 3c. Train the dam model
@@ -327,12 +312,12 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai ecoli_e2925.pcr_M.SssI.timp.alphabet_cpg.fofn
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-                                      -m ecoli_e2925.pcr_M.SssI.timp.alphabet_cpg.fofn \
+                                      -m ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
                                       -g $(TMP_REF)
@@ -408,6 +393,6 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 # Step 6. Global methylation analysis
 #
 ##################################################
-global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv giab.NA24385.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv M.SssI.lambda.sorted.bam.methyltest.sites.tsv
+global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv giab.NA24385.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv MSssI.lambda.sorted.bam.methyltest.sites.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R global_methylation $^ $@
 	cp $@ $@.$(NOW).pdf
