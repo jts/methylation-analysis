@@ -55,13 +55,15 @@ all: training_plots_abcMG_event_mean.pdf
 all-nucleotide: ecoli_er2925.native.timp.102615.alphabet_nucleotide.fofn \
                 ecoli_er2925.native.timp.110915.alphabet_nucleotide.fofn \
                 ecoli_er2925.pcr.timp.113015.alphabet_nucleotide.fofn \
-                ecoli_er2925.pcr_MSssI.timp.113015.alphabet_nucleotide.fofn 
+                ecoli_er2925.pcr_MSssI.timp.113015.alphabet_nucleotide.fofn  \
+                ecoli_k12.pcr.loman.250915.alphabet_nucleotide.fofn
                 #ecoli_k12.native.loman.alphabet_nucleotide.fofn \
                 #ecoli_k12.pcr.loman.alphabet_nucleotide.fofn
 
-all-cpg: ecoli_er2925.pcr.timp.alphabet_cpg.fofn \
-         ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn \
-         ecoli_k12.pcr.loman.alphabet_cpg.fofn
+all-cpg: ecoli_er2925.pcr.timp.113015.alphabet_cpg.fofn \
+         ecoli_er2925.pcr_MSssI.timp.113015.alphabet_cpg.fofn \
+         ecoli_k12.pcr.loman.250915.alphabet_cpg.fofn
+         #ecoli_k12.pcr.loman.alphabet_cpg.fofn
 
 ##################################################
 #
@@ -75,7 +77,7 @@ DATA_ROOT=../data
 # Define variables for each data set
 #
 ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.run1.fasta
-ECOLI_K12_PCR_DATA=ecoli_k12.pcr.loman.run1.fasta
+ECOLI_K12_PCR_RUN1_DATA=ecoli_k12.pcr.loman.250915.fasta
 
 ECOLI_ER2925_NATIVE_RUN1_DATA=ecoli_er2925.native.timp.102615.fasta
 ECOLI_ER2925_NATIVE_RUN2_DATA=ecoli_er2925.native.timp.110915.fasta
@@ -95,7 +97,7 @@ HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
 
 # For each data set that we use, define a variable containing its reference
 $(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_K12_PCR_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
 
 $(ECOLI_ER2925_NATIVE_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_ER2925_NATIVE_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
@@ -131,9 +133,31 @@ PORETOOLS=poretools
 #DOWNLOADER=/path/to/download_from_aspera.sh
 DOWNLOADER=wget
 
-$(DATA_ROOT)/ecoli_k12.native.loman.240915.fast5:
-	cd $(DATA_ROOT)	&& $(DOWNLOADER) ftp://ftp.sra.ebi.ac.uk/vol1/ERA540/ERA540530/oxfordnanopore_native/MAP006-1.tar
-	#cd $(DATA_ROOT) && tar -xf MAP006-1.tar
+# Download a tar file from the ENA
+$(DATA_ROOT)/%.tar:
+	cd $(DATA_ROOT)	&& $(DOWNLOADER) ftp://ftp.sra.ebi.ac.uk/vol1/ERA540/ERA540530/oxfordnanopore_native/$(@F)
+
+# untar it
+$(DATA_ROOT)/%: $(DATA_ROOT)/%.tar
+	cd $(DATA_ROOT) && tar -xf $*.tar
+
+all-ecoli-k12-data: $(DATA_ROOT)/ecoli_k12.native.loman.240915.fast5 \
+                    $(DATA_ROOT)/ecoli_k12.native.loman.280915.fast5 \
+                    $(DATA_ROOT)/ecoli_k12.pcr.loman.250915.fast5 \
+                    $(DATA_ROOT)/ecoli_k12.pcr.loman.280915.fast5
+
+# symlink to structured names
+$(DATA_ROOT)/ecoli_k12.native.loman.240915.fast5: $(DATA_ROOT)/MAP006-1
+	cd $(DATA_ROOT) && ln -s MAP006-1/MAP006-1_downloads $(@F)
+
+$(DATA_ROOT)/ecoli_k12.native.loman.280915.fast5: $(DATA_ROOT)/MAP006-2
+	cd $(DATA_ROOT) && ln -s MAP006-2/MAP006-2_downloads $(@F)
+
+$(DATA_ROOT)/ecoli_k12.pcr.loman.250915.fast5: $(DATA_ROOT)/MAP006-PCR-1
+	cd $(DATA_ROOT) && ln -s MAP006-PCR-1/MAP006-PCR_downloads $(@F)
+
+$(DATA_ROOT)/ecoli_k12.pcr.loman.280915.fast5: $(DATA_ROOT)/MAP006-PCR-2
+	cd $(DATA_ROOT) && ln -s MAP006-PCR-2/MAP006-PCR-2_downloads $(@F)
 
 # Reference genomes
 ecoli_k12.fasta:
@@ -175,9 +199,8 @@ $(HUMAN_NA12878_DATA): NA12878.native.timp.run1.fasta \
 # containing the reference genome for this sample
 .SECONDEXPANSION:
 %.sorted.bam: %.fasta $$(%.fasta_REFERENCE) $$(%.fasta_REFERENCE).bwt bwa.version samtools.version
-	SGE_RREQ="-l h_vmem=4G -l h_stack=32M -pe smp $(THREADS)" \
-    bwa/bwa mem -t $(THREADS) -x ont2d $($*.fasta_REFERENCE) $< | \
-        samtools/samtools view -Sb - | \
+	bwa/bwa mem -t $(THREADS) -x ont2d $($*.fasta_REFERENCE) $< |\
+        samtools/samtools view -Sb - |\
         samtools/samtools sort -f - $@
 
 %.bam.bai: %.bam
@@ -210,8 +233,7 @@ $(eval PREFIX=$(DATASET).alphabet_$(ALPHABET))
 
 # Training rule
 $(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
-	SGE_RREQ="-l h_vmem=4G -l h_stack=32M -pe smp $(THREADS)" \
-    nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
+	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $$@ \
                                       --out-suffix .$(PREFIX).model \
@@ -242,11 +264,10 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 %.alphabet_nucleotide.model: %.model
 	ln -s $< $@
 	
-$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_RUN1_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RERUN_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_DATA),nucleotide))
 
@@ -268,7 +289,7 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_MSSSI_DATA),cpg))
 # negative controls
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_DATA),cpg))
 
