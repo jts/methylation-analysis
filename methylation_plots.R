@@ -272,33 +272,6 @@ site_likelihood_plots <- function(in_file, out_file) {
     dev.off()
 }
 
-read_classification_plot <- function(m_file, c_file, out_file) {
-    require(ggplot2)
-    m_data <- load_read_classification_data(m_file, "methylated")
-    c_data <- load_read_classification_data(c_file, "unmethylated")
-    all <- rbind(m_data, c_data)
-
-    p <- ggplot(all, aes(n_cpg, sum_ll_ratio, color=dataset)) + geom_point()
-    ggsave(out_file, p, width=20, height=10)
-
-    p2 <- ggplot(all, aes(sum_ll_ratio / n_cpg, color=dataset)) + geom_density(alpha=0.5)
-    ggsave("read_classification_density.pdf", width=20, height=10)
-}
-
-strand_classification_plot <- function(m_file, c_file, out_file) {
-    require(ggplot2)
-    m_data <- load_strand_classification_data(m_file, "methylated")
-    c_data <- load_strand_classification_data(c_file, "unmethylated")
-    all <- rbind(m_data, c_data)
-
-    p <- ggplot(all, aes(n_cpg, sum_ll_ratio, color=dataset)) + geom_point()
-    ggsave(out_file, p, width=20, height=10)
-
-    p2 <- ggplot(all, aes(sum_ll_ratio / n_cpg, color=dataset)) + geom_density(alpha=0.5)
-    ggsave("strand_classification_density.pdf", width=20, height=10)
-}
-
-
 #
 # Human analysis plots
 #
@@ -315,43 +288,30 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     require(stringr)
 
     ont <- read_ont_scores_file(nanopore_file)
+    ont$ont_percent_methylated = 100 * (ont$called_sites_methylated / ont$called_sites)
+
     bisulfite <- read_bisulfite_scores_file(bisulfite_file)
+    
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$near_gene = merged$gene.x != "."
-    ggplot(merged, aes(bisulfite_percent_methylated, estimated_methylated_sites / n_ont_sites, color=near_gene)) + 
+    ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, color=near_gene)) + 
         geom_point() +
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
-        ylab("Posterior estimate of percent methylated (ont)") +
+        ylab("Nanopore called sites percent methylated (ont)") +
         ggtitle("Methylation signal at CpG Islands")
    ggsave(out_file, width=10,height=10, useDingbats = FALSE)
 
-   # correlation coefficients
-   cor_all <- cor(merged$bisulfite_percent_methylated, merged$sum_posterior / merged$n_ont_sites)
-   print(cor_all)
-   
-   s <- subset(merged, near_gene == TRUE)
-   cor_near <- cor(s$bisulfite_percent_methylated, s$sum_posterior / s$n_ont_sites)
-   print(cor_near)
-   
-   s <- subset(merged, near_gene == FALSE)
-   cor_not_near <- cor(s$bisulfite_percent_methylated, s$sum_posterior / s$n_ont_sites)
-   print(cor_not_near)
-
-   shuffled = transform(merged, bisulfite_percent_methylated = sample(bisulfite_percent_methylated))
-   cor_shuffled <- cor(shuffled$bisulfite_percent_methylated, shuffled$sum_posterior / merged$n_ont_sites)
-   print(cor_shuffled)
-
    # plot histograms
-   p1 <- ggplot(ont, aes(100 * estimated_methylated_sites / n_ont_sites, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
-   #p1 <- ggplot(ont, aes(sum_posterior / n_ont_sites, fill=gene != ".")) + geom_density(alpha=0.5)
+   p1 <- ggplot(ont, aes(ont_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
    p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
+
    pdf("histogram.pdf")
    multiplot(plotlist=list(p1, p2), cols=1)
    dev.off()
 
    plot_ont_hist <- function(data, title) { 
-        p <- ggplot(data, aes(100 * sum_posterior / n_ont_sites, fill=gene != ".")) +
+        p <- ggplot(data, aes(ont_percent_methylated, fill=gene != ".")) +
              geom_histogram(alpha=0.5, position="identity", binwidth=4) +
              ggtitle(title)
         return(p)
@@ -364,7 +324,6 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
       return(p)
    }
 
-
    p_ont_x <- plot_ont_hist(subset(ont, str_sub(key, 1, 4) == "chrX"), "ONT ChrX") 
    p_ont_not_x <- plot_ont_hist(subset(ont, str_sub(key, 1, 4) != "chrX"), "ONT Not ChrX")
    p_bs_x <- plot_bs_hist(subset(bisulfite, str_sub(key, 1, 4) == "chrX"), "Bisulfite ChrX") 
@@ -373,6 +332,34 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
    pdf("histogram_chromosomes.pdf", 15, 10)
    multiplot(plotlist=list(p_ont_x, p_ont_not_x, p_bs_x, p_bs_not_x), cols=2)
    dev.off()
+}
+
+#
+# Distance to TSS analysis
+#
+load_distance_data <- function(filename, tag) {
+    data <- read.table(filename, header=T)
+    data$dataset = tag
+    return(data)
+}
+
+distance_to_TSS_plot <- function(out_file) {
+    require(ggplot2)
+
+    data1 = load_distance_data("NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table", "ont.pcr")
+    data2 = load_distance_data("NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table", "ont.pcr_MSssI")
+    data3 = load_distance_data("NA12878.native.merged.methylated_sites.distance_to_TSS.table", "ont.native")
+    data4 = load_distance_data("bisulfite.distance_to_TSS.table", "bisulfite")
+    data_all <- rbind(data1, data2, data3, data4)
+    pdf(out_file, 12, 4)
+    p <- ggplot(data_all, aes(max_distance, percent_methylated, group=dataset, color=dataset)) + 
+            geom_point(size=1) + 
+            geom_line(size=0.1) + 
+            xlab("Binned distance to TSS") + 
+            ylab("Percent Methylated") + 
+            ylim(0, 1)
+    multiplot(p, cols=1)
+    dev.off()
 }
 
 #

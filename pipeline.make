@@ -56,15 +56,21 @@ all-nucleotide: ecoli_er2925.native.timp.102615.alphabet_nucleotide.fofn \
                 ecoli_er2925.native.timp.110915.alphabet_nucleotide.fofn \
                 ecoli_er2925.pcr.timp.113015.alphabet_nucleotide.fofn \
                 ecoli_er2925.pcr_MSssI.timp.113015.alphabet_nucleotide.fofn  \
-                ecoli_k12.pcr.loman.250915.alphabet_nucleotide.fofn
-                #ecoli_k12.native.loman.alphabet_nucleotide.fofn \
-                #ecoli_k12.pcr.loman.alphabet_nucleotide.fofn
+                ecoli_k12.pcr.loman.250915.alphabet_nucleotide.fofn \
+                ecoli_er2925.pcr.timp.021216.alphabet_nucleotide.fofn \
+                ecoli_er2925.pcr_MSssI.timp.021216.alphabet_nucleotide.fofn
 
 all-cpg: ecoli_er2925.pcr.timp.113015.alphabet_cpg.fofn \
          ecoli_er2925.pcr_MSssI.timp.113015.alphabet_cpg.fofn \
-         ecoli_k12.pcr.loman.250915.alphabet_cpg.fofn
-         #ecoli_k12.pcr.loman.alphabet_cpg.fofn
+         ecoli_k12.pcr.loman.250915.alphabet_cpg.fofn \
+         ecoli_er2925.pcr.timp.021216.alphabet_cpg.fofn \
+         ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
 
+all-methylation-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
+                       NA12878.native.simpson.101515.cpg_island_plot.pdf \
+                       NA12878.native.simpson.103015.cpg_island_plot.pdf \
+                       NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
+                       NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 ##################################################
 #
 # Step 1. Prepare input data 
@@ -85,12 +91,16 @@ ECOLI_ER2925_NATIVE_RUN2_DATA=ecoli_er2925.native.timp.110915.fasta
 ECOLI_ER2925_MSSSI_RUN1_DATA=ecoli_er2925.MSssI.timp.100215.fasta
 ECOLI_ER2925_MSSSI_RUN2_DATA=ecoli_er2925.MSssI.timp.100615.fasta
 
-ECOLI_ER2925_PCR_DATA=ecoli_er2925.pcr.timp.113015.fasta
-ECOLI_ER2925_PCR_MSSSI_DATA=ecoli_er2925.pcr_MSssI.timp.113015.fasta
+ECOLI_ER2925_PCR_RUN1_DATA=ecoli_er2925.pcr.timp.113015.fasta
+ECOLI_ER2925_PCR_RUN2_DATA=ecoli_er2925.pcr.timp.021216.fasta
+ECOLI_ER2925_PCR_RUN3_DATA=ecoli_er2925.pcr.timp.113015_recall.fasta
+ECOLI_ER2925_PCR_MSSSI_RUN1_DATA=ecoli_er2925.pcr_MSssI.timp.113015.fasta
+ECOLI_ER2925_PCR_MSSSI_RUN2_DATA=ecoli_er2925.pcr_MSssI.timp.021216.fasta
 
 HUMAN_NA12878_NATIVE_RUN1_DATA=NA12878.native.timp.093015.fasta
 HUMAN_NA12878_NATIVE_RUN2_DATA=NA12878.native.simpson.101515.fasta
 HUMAN_NA12878_NATIVE_RUN3_DATA=NA12878.native.simpson.103015.fasta
+HUMAN_NA12878_NATIVE_MERGED_DATA=NA12878.native.merged.fasta
 
 HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.021616.fasta
 HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
@@ -103,12 +113,16 @@ $(ECOLI_ER2925_NATIVE_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
 $(ECOLI_ER2925_NATIVE_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
 
 $(ECOLI_ER2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_RUN3_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
 
 $(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=human_g1k_v37.fasta
+$(HUMAN_NA12878_NATIVE_MERGED_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_PCR_DATA)_REFERENCE=human_g1k_v37.fasta
 $(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=human_g1k_v37.fasta
 
@@ -116,6 +130,11 @@ $(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=human_g1k_v37.fasta
 TRAINING_REFERENCE=ecoli_k12.fasta
 TRAINING_REGION="Chromosome:50000-3250000"
 METHYLTRAIN_EXTRA_OPTS = 
+
+TRAINED_MODEL_FOFN=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
+
+# The log-likelihood threshold required to make a call
+CALL_THRESHOLD=2.5
 
 # Convert a FAST5 file to FASTA using poretools
 PORETOOLS=poretools
@@ -165,6 +184,10 @@ ecoli_k12.fasta:
 	gunzip Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
 	mv Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa $@
 
+human_g1k_v37.fasta:
+	wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/human_g1k_v37.fasta.gz
+	-gunzip human_g1k_v37.fasta.gz
+
 #
 # Rules for generating fasta files from FAST5
 #
@@ -180,9 +203,9 @@ ecoli_k12.fasta:
 %.fasta: %.pass.fasta %.fail.fasta
 	cat $^ > $@
 
-$(HUMAN_NA12878_DATA): NA12878.native.timp.run1.fasta \
-                       NA12878.native.simpson.run2.fasta \
-                       NA12878.native.simpson.run3.fasta
+$(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
+                                     NA12878.native.simpson.101515.fasta \
+                                     NA12878.native.simpson.103015.fasta
 	cat $^ > $@
 
 ##################################################
@@ -268,8 +291,11 @@ $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN3_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),nucleotide))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleotide))
 
 #
 # 3b. Train over a CpG alphabet
@@ -290,8 +316,10 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_MSSSI_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),cpg))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 
 #
 # 3c. Train the dam model
@@ -333,12 +361,12 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 # Step 4. Test the methylation model
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai $(TRAINED_MODEL_FOFN)
 	$(eval TMP_BAM = $<)
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-                                      -m ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn \
+                                      -m $(TRAINED_MODEL_FOFN) \
                                       -b $(TMP_BAM) \
                                       -r $(TMP_FASTA) \
                                       -g $(TMP_REF)
@@ -368,8 +396,21 @@ strand_classification_plot.pdf: $(TEST_BAM).methyltest.strand.tsv $(TEST_CONTROL
 
 # Download database of CpG islands from Irizarry's method
 irizarry.cpg_islands.bed:
-	wget http://rafalab.jhsph.edu/CGI/model-based-cpg-islands-hg19.txt
+	wget http://web1.sph.emory.edu/users/hwu30/software/makeCGI/model-based-cpg-islands-hg19.txt
 	cat model-based-cpg-islands-hg19.txt | python $(ROOT_DIR)/tsv_to_annotated_bed.py > $@
+
+# Download gencode
+gencode.v19.annotation.gtf:
+	wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/gencode.v19.annotation.gtf.gz
+	gunzip gencode.v19.annotation.gtf.gz
+
+# Subset gencode to genes only
+gencode.v19.annotation.genes.gtf: gencode.v19.annotation.gtf
+	cat $^ | awk '$$0 ~ /#/ || ($$3 == "gene")' > $@
+
+# Download gencode transcription start sites
+gencode.v19.TSS.notlow.gff:
+    wget http://genome.crg.es/~sdjebali/Gencode/version19/Fantom5_CAGE/Inputs/gencode.v19.TSS.notlow.gff
 
 # Annotate the CpG islands with whether they are <= 2kb upstream of a gene
 irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed bedtools.version
@@ -408,6 +449,23 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 %.site_comparison.pdf: %.site_comparison.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R site_comparison_plot $^ $@
 	cp $@ $@.$(NOW).pdf
+
+# Calculate methylation as a function of distance from a TSS for the ONT data
+%.methylated_sites.distance_to_TSS.bed: %.sorted.bam.methyltest.sites.bed bedtools.version gencode.v19.TSS.notlow.gff
+	bedtools/bin/bedtools closest -D b -b <(cat gencode.v19.TSS.notlow.gff | bedtools/bin/bedtools sort)\
+                                       -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed | bedtools/bin/bedtools sort) > $@
+
+
+%.methylated_sites.distance_to_TSS.table: %.methylated_sites.distance_to_TSS.bed
+	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/calculate_methylation_by_distance.py --type ont -c $(CALL_THRESHOLD) -i $^ > $@
+
+# Calculate methylation as a function of distance for the bisulfite data
+bisulfite.distance_to_TSS.bed: ENCFF257GGV.bed bedtools.version gencode.v19.TSS.notlow.gff
+	bedtools/bin/bedtools closest -D b -b <(cat gencode.v19.TSS.notlow.gff | bedtools/bin/bedtools sort)\
+                                       -a ENCFF257GGV.bed > $@
+
+bisulfite.distance_to_TSS.table:
+	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/calculate_methylation_by_distance.py --type bisulfite -i $^
 
 ##################################################
 #
