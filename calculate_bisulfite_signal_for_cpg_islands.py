@@ -2,6 +2,8 @@
 
 import sys
 from collections import namedtuple
+from methylation_parsers import BisulfiteRecord
+from methylation_parsers import CpGIslandRecord
 
 class IslandStats:
     def __init__(self):
@@ -11,17 +13,18 @@ class IslandStats:
 island = dict()
 
 for line in sys.stdin:
-    (e_chr, e_start, e_end, _, _, e_strand, _, _, _, e_reads, e_m_percent, i_chr, i_start, i_end, i_kv) = line.split()
-    key = i_chr + ":" + i_start + "-" + i_end
-    
-    kv_dict = dict( (k, v) for k, v in (pair.split("=") for pair in i_kv.split(";")) )
+    fields = line.split()
+    bisulfite_record = BisulfiteRecord(fields[0:11])
+    cpg_island = CpGIslandRecord(fields[11:])
+
+    key = cpg_island.key()
 
     if key not in island:
         island[key] = IslandStats()
-        island[key].gene = kv_dict['Gene']
+        island[key].gene = cpg_island.gene
 
-    island[key].n += int(e_reads)
-    island[key].n_methylated += (int(e_reads) * (float(e_m_percent) / 100))
+    island[key].n += bisulfite_record.get_num_reads()
+    island[key].n_methylated += bisulfite_record.get_num_methylated_reads()
     
 # header
 print "\t".join(["key", "bisulfite_depth", "bisulfite_methylated_reads", "bisulfite_percent_methylated", "gene"])
