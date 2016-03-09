@@ -69,6 +69,7 @@ all-cpg: ecoli_er2925.pcr.timp.113015.alphabet_cpg.fofn \
 all-methylation-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
                        NA12878.native.simpson.101515.cpg_island_plot.pdf \
                        NA12878.native.simpson.103015.cpg_island_plot.pdf \
+                       NA12878.native.merged.cpg_island_plot.pdf \
                        NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
                        NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 ##################################################
@@ -433,18 +434,13 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 %.ont_score.cpg_islands: irizarry.cpg_islands.genes.bed %.sorted.bam.methyltest.sites.bed bedtools.version
 	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed \
                                         -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
-        python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py > $@
+        python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py -c $(CALL_THRESHOLD) > $@
 
 %.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
 	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 	cp $@ $@.$(NOW).pdf
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 	cp histogram_chromosomes.pdf $*.cpg_histogram_chromosomes.$(NOW).pdf
-
-%.site_comparison.tsv: ENCFF257GGV.bed %.sorted.bam.methyltest.sites.bed
-	bedtools/bin/bedtools intersect -wb -a ENCFF257GGV.bed \
-                                        -b <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
-                                        python ~/simpsonlab/users/jsimpson/code/methylation-analysis/calculate_bisulfite_vs_ont_signal.py > $@
 
 %.site_comparison.pdf: %.site_comparison.tsv
 	Rscript $(ROOT_DIR)/methylation_plots.R site_comparison_plot $^ $@
