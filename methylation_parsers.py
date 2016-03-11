@@ -21,7 +21,8 @@ class MethyltestRecord:
         kv_dict = str2dict(fields[3])
         self.loglik_ratio = float(kv_dict['LogLikRatio'])
         self.num_cpgs = int(kv_dict['NumCpGs'])
-        
+        self.sequence = kv_dict['Sequence']
+
     def is_region_callable(self, call_threshold):
         return abs(self.loglik_ratio) > (self.num_cpgs * call_threshold)
 

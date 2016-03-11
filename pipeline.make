@@ -72,6 +72,7 @@ all-methylation-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
                        NA12878.native.merged.cpg_island_plot.pdf \
                        NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
                        NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
+
 ##################################################
 #
 # Step 1. Prepare input data 
@@ -441,10 +442,6 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 	cp $@ $@.$(NOW).pdf
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 	cp histogram_chromosomes.pdf $*.cpg_histogram_chromosomes.$(NOW).pdf
-
-%.site_comparison.pdf: %.site_comparison.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R site_comparison_plot $^ $@
-	cp $@ $@.$(NOW).pdf
 
 # Calculate methylation as a function of distance from a TSS for the ONT data
 %.methylated_sites.distance_to_TSS.bed: %.sorted.bam.methyltest.sites.bed bedtools.version gencode.v19.TSS.notlow.gff

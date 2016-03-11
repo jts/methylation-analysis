@@ -95,81 +95,6 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
     return(p)
 }
 
-plot_event_stdv_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params)
-{
-    require(plyr)
-    require(ggplot2)
-    require(statmod)
-
-    # Convert Ms in the kmer to Cs for the control data
-    c_kmer <- gsub("M", "C", m_kmer)
-
-    # subset to the required kmers
-    u_subset <- unmethylated_data[c_kmer]
-    m_subset <- methylated_data[m_kmer]
-
-    # get the gaussian parmeters for these kmers
-    c_sd_mean = subset(params, kmer == c_kmer)[1,]$sd_mean
-    c_sd_stdv = subset(params, kmer == c_kmer)[1,]$sd_stdv
-    
-    m_sd_mean = subset(params, kmer == m_kmer)[1,]$sd_mean
-    m_sd_stdv = subset(params, kmer == m_kmer)[1,]$sd_stdv
-
-    if(nrow(u_subset) > 0) {
-        u_subset$dataset = paste(u_subset$dataset, c_kmer)
-    }
-
-    if(nrow(m_subset) > 0) {
-        m_subset$dataset = paste(m_subset$dataset, m_kmer)
-    }
-
-    # merge the subsetted data into a single data frame
-    all <- rbind(u_subset, m_subset)
-
-    m_ig_lambda = m_sd_mean ** 3 / m_sd_stdv ** 2
-    c_ig_lambda = c_sd_mean ** 3 / c_sd_stdv ** 2
-    # plot event means
-    p <- ggplot(all, aes(level_stdv, fill=dataset)) + 
-            #geom_density(alpha=0.5) +
-            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
-            stat_function(fun = dinvgauss, colour="red", arg=list(mean=m_sd_mean, shape=m_ig_lambda)) + 
-            stat_function(fun = dinvgauss, arg=list(mean=c_sd_mean, shape=c_ig_lambda)) + 
-            ggtitle(paste("event current stdv", m_kmer))
-    return(p)
-}
-
-plot_event_duration_for_kmer <- function(m_kmer, unmethylated_data, methylated_data, params)
-{
-    require(plyr)
-    require(ggplot2)
-    require(statmod)
-
-    # Convert Ms in the kmer to Cs for the control data
-    c_kmer <- gsub("M", "C", m_kmer)
-
-    # subset to the required kmers
-    u_subset <- unmethylated_data[c_kmer]
-    m_subset <- methylated_data[m_kmer]
-
-    if(nrow(u_subset) > 0) {
-        u_subset$dataset = paste(u_subset$dataset, c_kmer)
-    }
-
-    if(nrow(m_subset) > 0) {
-        m_subset$dataset = paste(m_subset$dataset, m_kmer)
-    }
-
-    # merge the subsetted data into a single data frame
-    all <- rbind(u_subset, m_subset)
-
-    p <- ggplot(all, aes(duration, fill=dataset)) + 
-            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.02, position="identity") +
-            ggtitle(paste("event duration", m_kmer)) +
-            xlim(0, 0.2)
-    return(p)
-}
-
-
 generate_training_plot <- function(outfile, twomer, control_data, methylated_data, params, plot_func)
 {
     kmers = make_context_mers(twomer, 4, 0)
@@ -210,65 +135,6 @@ make_training_plots <- function(training_in, control_in)
             }
         }
     }
-    dev.off()
-}
-
-#
-# Methylation Testing plots
-#
-
-load_site_data <- function(filename, dataset_name)
-{
-    data <- read.table(filename, header=T)
-    data$dataset = dataset_name
-    return(data)
-}
-
-load_read_classification_data <- function(filename, dataset_name)
-{
-    data <- read.table(filename, header=T)
-    data$dataset = paste(dataset_name, data$complement_model, sep="-")
-    return(data)
-}
-
-load_strand_classification_data <- function(filename, dataset_name)
-{
-    data <- read.table(filename, header=T)
-    data$dataset = paste(dataset_name, data$model, sep="-")
-    return(data)
-}
-
-#
-# Plot the histogram of scores from a sites.tsv
-#
-site_histogram <- function(in_kmer, dataset) {
-    require(plyr)
-    require(ggplot2)
-    
-    sub <- subset(dataset, SEQUENCE == in_kmer)
-    
-    # hack, give at least one row
-    sub <- rbind(sub, dataset[1,])
-
-    p1 <- ggplot(sub, aes(LL_RATIO)) + 
-            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
-            xlim(-10, 10) +
-            ggtitle(in_kmer)
-
-    return(p1)
-}
-
-site_likelihood_plots <- function(in_file, out_file) {
-    data <- load_site_data(in_file, "methylated")
-    pdf(out_file, 32, 16)
-    
-    # CG in the last position
-    kmers = make_context_mers("CG", 3, 0)
-    plots = c()
-    for(i in 1:length(kmers)) {
-        plots[[i]] = site_histogram(kmers[[i]], data)
-    }
-    multiplot(plotlist=plots, cols=8)
     dev.off()
 }
 
@@ -403,132 +269,6 @@ global_methylation_plot <- function(outfile, ...) {
 }
 
 #
-# Event alignment summary
-#
-load_eventalign_summary <- function(filename) {
-   data <- read.table(filename, header=T)
-   data$dataset = filename
-   return(data)
-}
-
-#
-# Site comparison
-#
-site_comparison_plot <- function(infile, outfile) {
-    require(ggplot2)
-    data <- read.table(infile, header=T)
-    pdf(outfile)
-    p1 <- ggplot(data, aes(bisulfite_percent_methylated - 100 * ont_p_methylated)) + geom_histogram() + ggtitle("input")
-    p2 <- ggplot(transform(data, bisulfite_percent_methylated = sample(bisulfite_percent_methylated)), 
-                 aes(bisulfite_percent_methylated - 100 * ont_p_methylated)) + 
-                 geom_histogram() + 
-                 ggtitle("shuffled")
-    multiplot(p1, p2, cols=1)
-    dev.off()
-}
-
-# Plot multiple 5-mers on a single plot
-site_multiplot <- function(kmers, ...) {
-    plots = c()
-    for(i in 1:length(kmers)) {
-        plots[[i]] = site_histogram(kmers[[i]], ...)
-    }
-    multiplot(plotlist=plots, cols=8)
-}
-
-# Plot the levels for the 4 kmers preceding, following
-# and adjacent to the given kmer, for a series of data
-kmer_neighbor_levels <- function(kmer, model_short_name, ...) {
-
-    require(stringr)
-    require(ggplot2)
-    
-    params <- NULL
-    if(model_short_name == "t") {
-        params <- read.table("r7.3_template_median68pA.model", header=T)
-    } else if(model_short_name == "c.p1") {
-        params <- read.table("r7.3_complement_median68pA_pop1.model", header=T)
-    } else if(model_short_name == "c.p2") {
-        params <- read.table("r7.3_complement_median68pA_pop2.model", header=T)
-    }
-
-    prefix = str_sub(kmer, 1, 4)
-    suffix = str_sub(kmer, 2, 5)
-
-    left_neighbors <- make_context_mers(prefix, 1, 0)
-    astride <- make_context_mers(prefix, 0, 1)
-    right_neighbors <- make_context_mers(suffix, 0, 1)
-
-    # Group the kmer list
-    all_kmers <- c()
-    j <- 1
-    for(i in seq(1, 4)) {
-        
-        all_kmers[[j]] <- left_neighbors[i]
-        all_kmers[[j+1]] <- astride[i]
-        all_kmers[[j+2]] <- right_neighbors[i]
-
-        j <- j + 3
-    }
-
-
-    datalist = list(...)
-
-    plots <- c()
-    i <- 1
-    for(k in all_kmers) {
-        all <- NULL
-        for(d in datalist) {
-            kmer_params <- get_params_for_kmer(k, params)
-            s_k <- d[k]
-            s_k_m <- s_k[model == model_short_name]
-
-            if(is.null(all)) {
-                all = s_k_m
-            } else {
-                all = rbind(all, s_k_m)
-            }
-        }
-
-        title <- k
-        if(k == kmer) {
-            title <- paste("base kmer,", k)
-        }
-        p <- ggplot(all, aes(level_mean, fill=dataset)) + 
-             geom_histogram(position = "identity", stat = "density", alpha=0.5) + 
-             stat_function(fun = dnorm, colour="black", arg=list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv)) + 
-             ggtitle(title) + 
-             xlim(50, 80)
-
-        row_idx <- 
-        plots[[i]] <- p
-        i <- i + 1
-    }
-
-    multiplot(plotlist=plots, cols=3)
-}
-
-# Plot the observed levels for kmer-
-plot_levels_by_neighbor <- function(in_kmer, model_short_name, data, params) {
-
-    kmer_params <- get_params_for_kmer(in_kmer, params)
-    
-    # levels based on previous
-    p1 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean, fill=prev_kmer)) + 
-                 geom_histogram(stat="bin", position="identity", alpha=0.5)
-    
-    # levels based on next
-    p2 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean, fill=next_kmer)) + 
-                 geom_histogram(stat="bin", position="identity", alpha=0.5)
-
-    # all levels
-    p3 <- ggplot(data[model_kmer == in_kmer & model == model_short_name], aes(level_mean)) + 
-                 geom_histogram(stat="density", position="identity", alpha=0.5) + 
-            stat_function(fun=dnorm, args = list(mean=kmer_params$level_mean, sd=kmer_params$level_stdv))
-    multiplot(p1, p2, p3, cols=1)
-}
-
-#
 # Utility functions for generating kmers
 #
 make_context_mers <- function(context, n_bases_before, n_bases_after, alphabet=c('A', 'C', 'G', 'T')) {
@@ -575,16 +315,10 @@ command = args[1]
 if(! interactive()) {
     if(command == "training_plots") {
         make_training_plots(args[2], args[3])
-    } else if(command == "site_likelihood_plots") {
-        site_likelihood_plots(args[2], args[3])
-    } else if(command == "read_classification_plot") {
-        read_classification_plot(args[2], args[3], args[4])
     } else if(command == "strand_classification_plot") {
         strand_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
-    } else if(command == "site_comparison_plot") {
-        site_comparison_plot(args[2], args[3])
     } else if(command == "global_methylation") {
         outfile = args[length(args)]
         global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))

@@ -19,7 +19,6 @@ if args.input:
 else:
     in_file = sys.stdin
 
-#distance_cuts = [0, 1, 5, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 50000, 100000]
 distance_cuts = range(-5000, 5000, 50)
 distance_sum_sites = [0] * len(distance_cuts)
 distance_sum_methylated = [0] * len(distance_cuts)
@@ -64,27 +63,3 @@ print "\t".join(["max_distance", "sites", "sites_methylated", "percent_methylate
 for i in range(0, len(distance_cuts) - 1):
     p = float(distance_sum_methylated[i]) / distance_sum_sites[i] if distance_sum_sites[i] > 0 else 0
     print "%d\t%d\t%d\t%.3lf" % (distance_cuts[i], distance_sum_sites[i], distance_sum_methylated[i], p)
-
-if False:
-    for line in in_file:
-        fields = line.split()
-        methyltest_record = MethyltestRecord(fields[0:4])
-        gtf_record = fields[4:-1]
-        distance = int(fields[-1])
-
-        if methyltest_record.is_region_callable(args.call_threshold):
-            n = methyltest_record.get_num_called_sites(args.call_threshold)
-            m = methyltest_record.get_num_called_methylated(args.call_threshold)
-            
-            for (i, dc) in enumerate(distance_cuts):
-                if distance < dc:
-                    distance_sum_sites[i] += n
-                    distance_sum_methylated[i] += m
-
-
-# header
-#print "\t".join(["key", "n_covered_sites", "posterior_methylated_sites", "called_sites", "called_sites_methylated", "gene"])
-
-#for key in island:
-#    print "\t".join([str(x) for x in [key, island[key].num_covered_sites, island[key].sum_posterior, island[key].called_sites, island[key].called_sites_methylated, island[key].gene]])
-#import sys
