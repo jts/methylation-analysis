@@ -39,7 +39,7 @@ def sample_sites(filename, is_methylated):
 parser = argparse.ArgumentParser( description='Calculate call accuracy stats as a function of likelihood thresholds')
 parser.add_argument('--unmethylated', type=str, required=True)
 parser.add_argument('--methylated', type=str, required=True)
-parser.add_argument('--num-sites', type=str, required=False, default=1000000)
+parser.add_argument('--num-sites', type=str, required=False, default=200000)
 args = parser.parse_args()
 
 # Set the range of likelihood thresholds to use
@@ -108,15 +108,16 @@ for t in likelihood_thresholds:
         tn += not called_methylated and not s.is_true_methylated 
         fn += not called_methylated and s.is_true_methylated 
         
-        # results set 2: accuracy as a function of the likelihood read for making a call
+        # results set 2: accuracy as a function of the likelihood required for making a call
         called += abs(s.loglik_ratio) > t
-        correct += abs(s.loglik_ratio) > t and ( (s.loglik_ratio > t) == s.is_true_methylated)
+        correct += abs(s.loglik_ratio) > t and ( (s.loglik_ratio > 0) == s.is_true_methylated)
 
     precision = float(tp) / (tp + fp)
     recall = float(tp) / (tp + fn)
     specificity = float(tn) / (tn + fp)
     accuracy = float(correct) / called
     pr_writer.write("%.2f\t%d\t%d\t%d\t%d\t%.3f\t%.3f\t%.3f\n" % (t, tp, fp, tn, fn, precision, recall, specificity))
+
     acc_writer.write("%.2f\t%d\t%d\t%.3f\n" % (t, called, correct, accuracy))
 
 acc_writer.close()

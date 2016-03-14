@@ -229,6 +229,20 @@ distance_to_TSS_plot <- function(out_file) {
 }
 
 #
+#
+#
+call_accuracy_by_threshold <- function() {
+    require(ggplot2)
+    data <- read.table("accuracy.bythreshold.tsv", header=T)
+    
+    pdf("accuracy_by_threshold.pdf", 12, 6)
+    p1 <- ggplot(data, aes(threshold, accuracy)) + geom_line() + xlim(0, 10) + ylim(0, 1) + xlab("Log-Likelihood ratio threshold"); 
+    p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log-Likelihood ratio threshold"); 
+    multiplot(p1, p2, cols=2); 
+    dev.off()
+}
+
+#
 # Global methylation analysis
 #
 global_methylation_plot <- function(outfile, ...) {

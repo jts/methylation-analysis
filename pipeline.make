@@ -17,7 +17,7 @@ SHELL=/bin/bash -o pipefail
 THREADS=4
 
 # Path to this file
-ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+SCRIPT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 # Install samtools
 samtools.version:
@@ -305,11 +305,11 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleo
 
 # Expand the alphabet to include 5-mC k-mers
 %.alphabet_cpg.model: %.model
-	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet cpg $< > $@
+	python $(SCRIPT_DIR)/expand_model_alphabet.py --alphabet cpg $< > $@
 
 # Convert all CG dinucleotides of the reference genome to MG
 $(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
-	python $(ROOT_DIR)/methylate_reference.py --recognition cpg $< > $@
+	python $(SCRIPT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
 # train 
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_MSSSI_DATA),cpg))
@@ -329,11 +329,11 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 
 # Expand the alphabet of the pcr-trained model to include 5-mC k-mers
 %.alphabet_dam.model: %.model
-	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet dam $< > $@
+	python $(SCRIPT_DIR)/expand_model_alphabet.py --alphabet dam $< > $@
 
 # Convert all GATC sequences of the reference genome to GMTC
 $(TRAINING_REFERENCE).alphabet_dam: $(TRAINING_REFERENCE) pythonlibs.version
-	python $(ROOT_DIR)/methylate_reference.py --recognition dam $< > $@
+	python $(SCRIPT_DIR)/methylate_reference.py --recognition dam $< > $@
 
 $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dam))
 
@@ -343,11 +343,11 @@ $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dam))
 
 #
 %.alphabet_dcm.model: %.model
-	python $(ROOT_DIR)/expand_model_alphabet.py --alphabet dcm $< > $@
+	python $(SCRIPT_DIR)/expand_model_alphabet.py --alphabet dcm $< > $@
 
 # Convert all dcm sequences of the reference genome
 $(TRAINING_REFERENCE).alphabet_dcm: $(TRAINING_REFERENCE) pythonlibs.version
-	python $(ROOT_DIR)/methylate_reference.py --recognition dcm $< > $@
+	python $(SCRIPT_DIR)/methylate_reference.py --recognition dcm $< > $@
 
 $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dcm))
 
@@ -355,7 +355,7 @@ $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dcm))
 # 3e. Make training plots
 #
 training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R training_plots $^
+	Rscript $(SCRIPT_DIR)/methylation_plots.R training_plots $^
 	cp $@ $@.$(NOW).pdf
 
 ##################################################
@@ -375,18 +375,18 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 
 # Convert a site BED file into a tsv file for R
 %.methyltest.sites.tsv: %.methyltest.sites.bed
-	cat $< | python $(ROOT_DIR)/annotated_bed_to_tsv.py > $@
+	cat $< | python $(SCRIPT_DIR)/annotated_bed_to_tsv.py > $@
 
 site_likelihood_plots.pdf: $(TEST_BAM).methyltest.sites.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R site_likelihood_plots $< $@
+	Rscript $(SCRIPT_DIR)/methylation_plots.R site_likelihood_plots $< $@
 	cp $@ $@.$(NOW).pdf
 
 read_classification_plot.pdf: $(TEST_BAM).methyltest.reads.tsv $(TEST_CONTROL_BAM).methyltest.reads.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R read_classification_plot $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_plots.R read_classification_plot $^ $@
 	cp $@ $@.$(NOW).pdf
 
 strand_classification_plot.pdf: $(TEST_BAM).methyltest.strand.tsv $(TEST_CONTROL_BAM).methyltest.strand.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R strand_classification_plot $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_plots.R strand_classification_plot $^ $@
 	cp $@ $@.$(NOW).pdf
 
 
@@ -399,7 +399,7 @@ strand_classification_plot.pdf: $(TEST_BAM).methyltest.strand.tsv $(TEST_CONTROL
 # Download database of CpG islands from Irizarry's method
 irizarry.cpg_islands.bed:
 	wget http://web1.sph.emory.edu/users/hwu30/software/makeCGI/model-based-cpg-islands-hg19.txt
-	cat model-based-cpg-islands-hg19.txt | python $(ROOT_DIR)/tsv_to_annotated_bed.py > $@
+	cat model-based-cpg-islands-hg19.txt | python $(SCRIPT_DIR)/tsv_to_annotated_bed.py > $@
 
 # Download gencode
 gencode.v19.annotation.gtf:
@@ -429,16 +429,16 @@ ENCFF257GGV.bed:
 # Calculate a summary data for each CpG island from the bisulfite data
 NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.bed bedtools.version
 	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a ENCFF257GGV.bed | \
-        python $(ROOT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
+        python $(SCRIPT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
 
 # Calculate a summary score for each CpG island from the ONT reads
 %.ont_score.cpg_islands: irizarry.cpg_islands.genes.bed %.sorted.bam.methyltest.sites.bed bedtools.version
 	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed \
                                         -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
-        python $(ROOT_DIR)/calculate_ont_signal_for_cpg_islands.py -c $(CALL_THRESHOLD) > $@
+        python $(SCRIPT_DIR)/calculate_ont_signal_for_cpg_islands.py -c $(CALL_THRESHOLD) > $@
 
 %.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
-	Rscript $(ROOT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 	cp $@ $@.$(NOW).pdf
 	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
 	cp histogram_chromosomes.pdf $*.cpg_histogram_chromosomes.$(NOW).pdf
@@ -450,7 +450,7 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 
 
 %.methylated_sites.distance_to_TSS.table: %.methylated_sites.distance_to_TSS.bed
-	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/calculate_methylation_by_distance.py --type ont -c $(CALL_THRESHOLD) -i $^ > $@
+	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type ont -c $(CALL_THRESHOLD) -i $^ > $@
 
 # Calculate methylation as a function of distance for the bisulfite data
 bisulfite.distance_to_TSS.bed: ENCFF257GGV.bed bedtools.version gencode.v19.TSS.notlow.gff
@@ -458,7 +458,7 @@ bisulfite.distance_to_TSS.bed: ENCFF257GGV.bed bedtools.version gencode.v19.TSS.
                                        -a ENCFF257GGV.bed > $@
 
 bisulfite.distance_to_TSS.table:
-	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/calculate_methylation_by_distance.py --type bisulfite -i $^
+	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^
 
 ##################################################
 #
@@ -466,5 +466,5 @@ bisulfite.distance_to_TSS.table:
 #
 ##################################################
 global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv giab.NA24385.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv MSssI.lambda.sorted.bam.methyltest.sites.tsv
-	Rscript $(ROOT_DIR)/methylation_plots.R global_methylation $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_plots.R global_methylation $^ $@
 	cp $@ $@.$(NOW).pdf
