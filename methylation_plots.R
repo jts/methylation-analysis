@@ -310,6 +310,32 @@ call_accuracy_by_kmer <- function(in_file, out_file) {
     dev.off()
 }
 
+site_likelihood_distribution <- function(out_file, ...) {
+    in_files = list(...)
+    all_data = NULL
+    for(i in 1:length(in_files[[1]])) {
+        filename = in_files[[1]][[i]]
+        data = read.table(filename, header=T)
+        data$dataset = make_display_name(filename)
+        if(is.null(all_data)) {
+            all_data = data
+        } else {
+            all_data = rbind(all_data, data)
+        }
+    }
+
+    pdf(out_file, 9, 12)
+    p1 <- ggplot(subset(all_data, NumCpGs == 1), aes(LogLikRatio)) + 
+        facet_grid(dataset ~ .) + 
+        geom_histogram(binwidth=0.5, aes(y=(..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..])) +
+        xlim(-15, 15) +
+        ylab("Proportion") +
+        global_theme() 
+
+    multiplot(p1, cols=1); 
+    dev.off()
+}
+
 #
 # Utility functions for generating kmers
 #
@@ -375,6 +401,9 @@ if(! interactive()) {
         call_accuracy_roc(args[2], args[3])
     } else if(command == "call_accuracy_by_kmer") {
         call_accuracy_by_kmer(args[2], args[3])
+    } else if(command == "site_likelihood_distribution") {
+        outfile = args[length(args)]
+        site_likelihood_distribution(outfile, as.vector(args[c(-1, -length(args))]))
     } else if(command == "global_methylation") {
         outfile = args[length(args)]
         global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))

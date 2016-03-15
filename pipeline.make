@@ -381,7 +381,7 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 
 # Convert a site BED file into a tsv file for R
 %.methyltest.sites.tsv: %.methyltest.sites.bed
-	cat $< | python $(ROOT_DIR)/annotated_bed_to_tsv.py > $@
+	cat $< | python $(SCRIPT_DIR)/annotated_bed_to_tsv.py > $@
 
 # Download gencode transcription start sites
 gencode.v19.TSS.notlow.gff:
@@ -448,6 +448,14 @@ methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                  NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
                                  NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
+
+#
+# Site likelihood plot
+#
+site.likelihood.distribution.pdf: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.tsv \
+                     NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.tsv \
+                     NA12878.native.merged.sorted.bam.methyltest.sites.tsv
+	Rscript $(SCRIPT_DIR)/methylation_plots.R site_likelihood_distribution $^ $@
 
 #
 # Accuracy results
