@@ -35,8 +35,10 @@ bwa.version:
 
 # Install python libs
 pythonlibs.version:
-	pip install --user biopython >> $@
-	pip install --user h5py >> $@
+	pip install biopython >> $@
+	git clone https://github.com/arq5x/poretools.git
+	pip install -r poretools/requirements.txt
+	cd poretools && python setup.py install
 	pip freeze >> $@
 
 # Install bedtools
@@ -45,12 +47,26 @@ bedtools.version:
 	cd bedtools; make
 	-cd bedtools; git log | head -1 > ../$@
 
+# Install nanopolish, automatically downloading libhdf5
+nanopolish.version:
+	git clone --recursive https://github.com/jts/nanopolish.git
+	cd nanopolish; git checkout aba1b32; make
+	-cd nanopolish; git log | head -1 > ../$@
+
 # timestamp for saving different versions of plots
 # http://stackoverflow.com/questions/12463770/insert-time-stamp-into-executable-name-using-makefile
 NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
 
+#
+PORETOOLS=poretools
+
+#
+# Output targets
+#
 .DEFAULT_GOAL := all
-all: training_plots_abcMG_event_mean.pdf
+all: all-nucleotide all-cpg
+
+all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
 
 all-nucleotide: ecoli_er2925.native.timp.102615.alphabet_nucleotide.fofn \
                 ecoli_er2925.native.timp.110915.alphabet_nucleotide.fofn \
@@ -66,12 +82,12 @@ all-cpg: ecoli_er2925.pcr.timp.113015.alphabet_cpg.fofn \
          ecoli_er2925.pcr.timp.021216.alphabet_cpg.fofn \
          ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
 
-all-methylation-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
-                       NA12878.native.simpson.101515.cpg_island_plot.pdf \
-                       NA12878.native.simpson.103015.cpg_island_plot.pdf \
-                       NA12878.native.merged.cpg_island_plot.pdf \
-                       NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
-                       NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
+all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
+                  NA12878.native.simpson.101515.cpg_island_plot.pdf \
+                  NA12878.native.simpson.103015.cpg_island_plot.pdf \
+                  NA12878.native.merged.cpg_island_plot.pdf \
+                  NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
+                  NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 
 ##################################################
 #
@@ -108,38 +124,43 @@ HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.021616.fasta
 HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
 
 # For each data set that we use, define a variable containing its reference
-$(ECOLI_K12_NATIVE_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
 
-$(ECOLI_ER2925_NATIVE_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_NATIVE_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
+# E.coli
+ECOLI_REFERENCE=ecoli_k12.fasta
+$(ECOLI_K12_NATIVE_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
-$(ECOLI_ER2925_MSSSI_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_RUN3_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=ecoli_k12.fasta
-$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=ecoli_k12.fasta
+$(ECOLI_ER2925_NATIVE_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_NATIVE_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
-$(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=human_g1k_v37.fasta
-$(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=human_g1k_v37.fasta
-$(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=human_g1k_v37.fasta
-$(HUMAN_NA12878_NATIVE_MERGED_DATA)_REFERENCE=human_g1k_v37.fasta
-$(HUMAN_NA12878_PCR_DATA)_REFERENCE=human_g1k_v37.fasta
-$(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=human_g1k_v37.fasta
+$(ECOLI_ER2925_MSSSI_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_PCR_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_PCR_RUN3_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
-# Reference file used for model training, must be the same for all training sets
-TRAINING_REFERENCE=ecoli_k12.fasta
+# Human
+HUMAN_REFERENCE=GRCh38.primary_assembly.genome.fa
+$(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_NATIVE_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_PCR_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+
+# Reference and region file used for model training
+TRAINING_REFERENCE=$(ECOLI_REFERENCE)
 TRAINING_REGION="Chromosome:50000-3250000"
+
+# for debugging
 METHYLTRAIN_EXTRA_OPTS = 
 
+# the name of the output model that we use for the human analysis
 TRAINED_MODEL_FOFN=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
 
 # The log-likelihood threshold required to make a call
 CALL_THRESHOLD=2.5
-
-# Convert a FAST5 file to FASTA using poretools
-PORETOOLS=poretools
 
 #
 # Download data
@@ -181,14 +202,14 @@ $(DATA_ROOT)/ecoli_k12.pcr.loman.280915.fast5: $(DATA_ROOT)/MAP006-PCR-2
 	cd $(DATA_ROOT) && ln -s MAP006-PCR-2/MAP006-PCR-2_downloads $(@F)
 
 # Reference genomes
-ecoli_k12.fasta:
+$(ECOLI_REFERENCE):
 	wget ftp://ftp.ensemblgenomes.org/pub/release-29/bacteria//fasta/bacteria_0_collection/escherichia_coli_str_k_12_substr_mg1655/dna/Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
 	gunzip Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
 	mv Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa $@
 
-human_g1k_v37.fasta:
-	wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/human_g1k_v37.fasta.gz
-	-gunzip human_g1k_v37.fasta.gz
+$(HUMAN_REFERENCE):
+	wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/GRCh38.primary_assembly.genome.fa.gz
+	-gunzip GRCh38.primary_assembly.genome.fa.gz
 
 #
 # Rules for generating fasta files from FAST5
@@ -202,9 +223,11 @@ human_g1k_v37.fasta:
 %.fail.fasta: $(DATA_ROOT)/%.fast5/fail
 	$(PORETOOLS) fasta --type 2D $< > $@
 
+# all reads
 %.fasta: %.pass.fasta %.fail.fasta
 	cat $^ > $@
 
+# all human runs 
 $(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
                                      NA12878.native.simpson.101515.fasta \
                                      NA12878.native.simpson.103015.fasta
@@ -246,10 +269,21 @@ $(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
 #
 ##################################################
 
+# symlink the ont models from the analysis directory
+t.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_template_median68pA.model
+	ln -s $^ $@
+
+c.p1.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_complement_median68pA_pop1.model
+	ln -s $^ $@
+
+c.p2.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_complement_median68pA_pop2.model
+	ln -s $^ $@
+
 # Make a file-of-filenames from a model set
 %.fofn: t.006.%.model c.p1.006.%.model c.p2.006.%.model
 	echo $^ | tr " " "\n" > $@
 
+# this code generates a training rule for a data set/alphabet pair 
 define generate-training-rules
 
 $(eval DATASET=$(basename $1))
@@ -257,7 +291,7 @@ $(eval ALPHABET=$2)
 $(eval PREFIX=$(DATASET).alphabet_$(ALPHABET))
 
 # Training rule
-$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn
+$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn nanopolish.version
 	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $$@ \
@@ -281,14 +315,15 @@ endef
 # 3a. Train over a normal nucleotide (ACGT) alphabet
 #
 
-# Special case, the transformed reference for the nucleotide alphabet is just the reference
+# Special case, the expanded reference for the alphabet is just the reference
 $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	ln -s $< $@
 
 # Special case, the expanded model for the nucleotide alphabet is just the ONT model
 %.alphabet_nucleotide.model: %.model
 	ln -s $< $@
-	
+
+# make the rules using the generation function
 $(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),nucleotide))
@@ -311,10 +346,8 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleo
 $(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(SCRIPT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
-# train 
+# make the rules using the generation function
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_MSSSI_DATA),cpg))
-
-# negative controls
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),cpg))
@@ -324,35 +357,7 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),cpg))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 
 #
-# 3c. Train the dam model
-#
-
-# Expand the alphabet of the pcr-trained model to include 5-mC k-mers
-%.alphabet_dam.model: %.model
-	python $(SCRIPT_DIR)/expand_model_alphabet.py --alphabet dam $< > $@
-
-# Convert all GATC sequences of the reference genome to GMTC
-$(TRAINING_REFERENCE).alphabet_dam: $(TRAINING_REFERENCE) pythonlibs.version
-	python $(SCRIPT_DIR)/methylate_reference.py --recognition dam $< > $@
-
-$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dam))
-
-#
-# 3d. Train the dcm model
-#
-
-#
-%.alphabet_dcm.model: %.model
-	python $(SCRIPT_DIR)/expand_model_alphabet.py --alphabet dcm $< > $@
-
-# Convert all dcm sequences of the reference genome
-$(TRAINING_REFERENCE).alphabet_dcm: $(TRAINING_REFERENCE) pythonlibs.version
-	python $(SCRIPT_DIR)/methylate_reference.py --recognition dcm $< > $@
-
-$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_DATA),dcm))
-
-#
-# 3e. Make training plots
+# 3c. Make training plots
 #
 training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R training_plots $^
@@ -360,59 +365,27 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 
 ##################################################
 #
-# Step 4. Test the methylation model
+# Step 4. Human genome analysis
 #
 ##################################################
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai $(TRAINED_MODEL_FOFN)
-	$(eval TMP_BAM = $<)
-	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
-	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
-	nanopolish/nanopolish methyltest  -t $(THREADS) \
-                                      -m $(TRAINED_MODEL_FOFN) \
-                                      -b $(TMP_BAM) \
-                                      -r $(TMP_FASTA) \
-                                      -g $(TMP_REF)
 
-# Convert a site BED file into a tsv file for R
-%.methyltest.sites.tsv: %.methyltest.sites.bed
-	cat $< | python $(SCRIPT_DIR)/annotated_bed_to_tsv.py > $@
+# Download gencode transcription start sites
+gencode.v19.TSS.notlow.gff:
+    wget http://genome.crg.es/~sdjebali/Gencode/version19/Fantom5_CAGE/Inputs/gencode.v19.TSS.notlow.gff
 
-site_likelihood_plots.pdf: $(TEST_BAM).methyltest.sites.tsv
-	Rscript $(SCRIPT_DIR)/methylation_plots.R site_likelihood_plots $< $@
-	cp $@ $@.$(NOW).pdf
+# Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
+ENCFF257GGV.bed:
+	wget https://www.encodeproject.org/files/ENCFF257GGV/@@download/ENCFF257GGV.bed.gz
+	gunzip ENCFF257GGV.bed.gz
 
-read_classification_plot.pdf: $(TEST_BAM).methyltest.reads.tsv $(TEST_CONTROL_BAM).methyltest.reads.tsv
-	Rscript $(SCRIPT_DIR)/methylation_plots.R read_classification_plot $^ $@
-	cp $@ $@.$(NOW).pdf
-
-strand_classification_plot.pdf: $(TEST_BAM).methyltest.strand.tsv $(TEST_CONTROL_BAM).methyltest.strand.tsv
-	Rscript $(SCRIPT_DIR)/methylation_plots.R strand_classification_plot $^ $@
-	cp $@ $@.$(NOW).pdf
-
-
-##################################################
 #
-# Step 5. Human genome analysis
+# CpG Island Methylation
 #
-##################################################
 
 # Download database of CpG islands from Irizarry's method
 irizarry.cpg_islands.bed:
 	wget http://web1.sph.emory.edu/users/hwu30/software/makeCGI/model-based-cpg-islands-hg19.txt
 	cat model-based-cpg-islands-hg19.txt | python $(SCRIPT_DIR)/tsv_to_annotated_bed.py > $@
-
-# Download gencode
-gencode.v19.annotation.gtf:
-	wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/gencode.v19.annotation.gtf.gz
-	gunzip gencode.v19.annotation.gtf.gz
-
-# Subset gencode to genes only
-gencode.v19.annotation.genes.gtf: gencode.v19.annotation.gtf
-	cat $^ | awk '$$0 ~ /#/ || ($$3 == "gene")' > $@
-
-# Download gencode transcription start sites
-gencode.v19.TSS.notlow.gff:
-    wget http://genome.crg.es/~sdjebali/Gencode/version19/Fantom5_CAGE/Inputs/gencode.v19.TSS.notlow.gff
 
 # Annotate the CpG islands with whether they are <= 2kb upstream of a gene
 irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed bedtools.version
@@ -420,11 +393,6 @@ irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstr
                                             -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) | \
                                             awk '{ print $$1 "\t" $$2 "\t" $$3 "\t" $$4 ";Gene=" $$5 }' > $@
 
-
-# Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
-ENCFF257GGV.bed:
-	wget https://www.encodeproject.org/files/ENCFF257GGV/@@download/ENCFF257GGV.bed.gz
-	gunzip ENCFF257GGV.bed.gz
 
 # Calculate a summary data for each CpG island from the bisulfite data
 NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.bed bedtools.version
