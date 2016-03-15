@@ -203,22 +203,52 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
 #
 # Distance to TSS analysis
 #
+make_display_name <- function(structured_name) {
+    require(stringr)
+    fields <- str_split(structured_name, fixed("."))[[1]]
+
+    sample = fields[1]
+    treatment = fields[2]
+
+    id = str_join(sample, treatment, sep=" ")
+
+    if(treatment == "bisulfite") {
+        return(id)
+    } else {
+        
+        lab = fields[3]
+        date = fields[4]
+        if(lab == "merged") {
+            return(sprintf("%s (%s)", id, lab))
+        } else {
+            return(sprintf("%s (%s-%s)", id, lab, date))
+        }
+    }
+}
+
 load_distance_data <- function(filename, tag) {
     data <- read.table(filename, header=T)
-    data$dataset = tag
+    data$dataset = make_display_name(filename)
     return(data)
 }
 
-distance_to_TSS_plot <- function(out_file) {
+TSS_distance_plot <- function(out_file, ...) {
     require(ggplot2)
+    
+    in_files = list(...)
+    all_data = NULL
+    for(i in 1:length(in_files[[1]])) {
+        filename = in_files[[1]][[i]]
+        data = load_distance_data(filename, filename)
+        if(is.null(all_data)) {
+            all_data = data
+        } else {
+            all_data = rbind(all_data, data)
+        }
+    }
 
-    data1 = load_distance_data("NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table", "ont.pcr")
-    data2 = load_distance_data("NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table", "ont.pcr_MSssI")
-    data3 = load_distance_data("NA12878.native.merged.methylated_sites.distance_to_TSS.table", "ont.native")
-    data4 = load_distance_data("bisulfite.distance_to_TSS.table", "bisulfite")
-    data_all <- rbind(data1, data2, data3, data4)
     pdf(out_file, 12, 4)
-    p <- ggplot(data_all, aes(max_distance, percent_methylated, group=dataset, color=dataset)) + 
+    p <- ggplot(all_data, aes(max_distance, percent_methylated, group=dataset, color=dataset)) + 
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
@@ -333,6 +363,9 @@ if(! interactive()) {
         strand_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
+    } else if(command == "TSS_distance_plot") {
+        outfile = args[length(args)]
+        TSS_distance_plot(outfile, as.vector(args[c(-1, -length(args))]))
     } else if(command == "global_methylation") {
         outfile = args[length(args)]
         global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))

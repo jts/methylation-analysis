@@ -53,10 +53,6 @@ nanopolish.version:
 	cd nanopolish; git checkout aba1b32; make
 	-cd nanopolish; git log | head -1 > ../$@
 
-# timestamp for saving different versions of plots
-# http://stackoverflow.com/questions/12463770/insert-time-stamp-into-executable-name-using-makefile
-NOW := $(shell date +'%y.%m.%d_%H:%M:%S')
-
 #
 PORETOOLS=poretools
 
@@ -243,6 +239,9 @@ $(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
 %.fasta.bwt: %.fasta bwa.version
 	bwa/bwa index $<
 
+%.fa.bwt: %.fa bwa.version
+	bwa/bwa index $<
+
 # We use secondary expansion to construct the name of the variable
 # containing the reference genome for this sample
 .SECONDEXPANSION:
@@ -310,7 +309,6 @@ $(DATASET).sorted.bam.methyltrain.tsv: $(PREFIX).fofn
 
 endef
 
-
 #
 # 3a. Train over a normal nucleotide (ACGT) alphabet
 #
@@ -361,13 +359,27 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 #
 training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R training_plots $^
-	cp $@ $@.$(NOW).pdf
 
 ##################################################
 #
 # Step 4. Human genome analysis
 #
 ##################################################
+
+# Calculate methylation likelihood ratios at every CpG covered by nanopore reads
+%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai $(TRAINED_MODEL_FOFN)
+	$(eval TMP_BAM = $<)
+	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
+	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
+	nanopolish/nanopolish methyltest  -t $(THREADS) \
+        -m ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn \
+        -b $(TMP_BAM) \
+        -r $(TMP_FASTA) \
+        -g $(TMP_REF)
+
+# Convert a site BED file into a tsv file for R
+%.methyltest.sites.tsv: %.methyltest.sites.bed
+	cat $< | python $(ROOT_DIR)/annotated_bed_to_tsv.py > $@
 
 # Download gencode transcription start sites
 gencode.v19.TSS.notlow.gff:
@@ -379,7 +391,7 @@ ENCFF257GGV.bed:
 	gunzip ENCFF257GGV.bed.gz
 
 #
-# CpG Island Methylation
+# CpG Island Methylation Results
 #
 
 # Download database of CpG islands from Irizarry's method
@@ -407,9 +419,10 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 
 %.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
 	Rscript $(SCRIPT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
-	cp $@ $@.$(NOW).pdf
-	cp histogram.pdf $*.cpg_histogram.$(NOW).pdf
-	cp histogram_chromosomes.pdf $*.cpg_histogram_chromosomes.$(NOW).pdf
+
+#
+# TSS results
+#
 
 # Calculate methylation as a function of distance from a TSS for the ONT data
 %.methylated_sites.distance_to_TSS.bed: %.sorted.bam.methyltest.sites.bed bedtools.version gencode.v19.TSS.notlow.gff
@@ -421,18 +434,19 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type ont -c $(CALL_THRESHOLD) -i $^ > $@
 
 # Calculate methylation as a function of distance for the bisulfite data
-bisulfite.distance_to_TSS.bed: ENCFF257GGV.bed bedtools.version gencode.v19.TSS.notlow.gff
+NA12878.bisulfite.distance_to_TSS.bed: ENCFF257GGV.bed bedtools.version gencode.v19.TSS.notlow.gff
 	bedtools/bin/bedtools closest -D b -b <(cat gencode.v19.TSS.notlow.gff | bedtools/bin/bedtools sort)\
                                        -a ENCFF257GGV.bed > $@
 
-bisulfite.distance_to_TSS.table:
-	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^
+NA12878.bisulfite.distance_to_TSS.table: NA12878.bisulfite.distance_to_TSS.bed
+	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
 
-##################################################
+methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
+                                 NA12878.native.merged.methylated_sites.distance_to_TSS.table \
+                                 NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
+                                 NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
+	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
+
 #
-# Step 6. Global methylation analysis
+# Accuracy results
 #
-##################################################
-global_methylation.pdf: ProHum20kb.sorted.bam.methyltest.sites.tsv giab.NA24385.sorted.bam.methyltest.sites.tsv control.lambda.sorted.bam.methyltest.sites.tsv MSssI.lambda.sorted.bam.methyltest.sites.tsv
-	Rscript $(SCRIPT_DIR)/methylation_plots.R global_methylation $^ $@
-	cp $@ $@.$(NOW).pdf
