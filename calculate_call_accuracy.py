@@ -39,7 +39,7 @@ def sample_sites(filename, is_methylated):
 parser = argparse.ArgumentParser( description='Calculate call accuracy stats as a function of likelihood thresholds')
 parser.add_argument('--unmethylated', type=str, required=True)
 parser.add_argument('--methylated', type=str, required=True)
-parser.add_argument('--num-sites', type=str, required=False, default=200000)
+parser.add_argument('--num-sites', type=str, required=False, default=100000)
 args = parser.parse_args()
 
 # Set the range of likelihood thresholds to use
@@ -72,7 +72,7 @@ for s in all_sites:
     kmer_stats[curr_context].called += 1
     kmer_stats[curr_context].correct += ((s.loglik_ratio > 0) == s.is_true_methylated)
 
-kmer_writer = open("accuracy.kmer.tsv", 'w')
+kmer_writer = open("accuracy.by_kmer.tsv", 'w')
 kmer_writer.write("kmer\tcalled\tcorrect\taccuracy\n")
 for kmer in kmer_stats:
     result = kmer_stats[kmer]
@@ -83,10 +83,10 @@ kmer_writer.close()
 #
 
 # open output files and write headers
-pr_writer = open("accuracy.pr.tsv", 'w')
-pr_writer.write("threshold\tcalled\ttrue_positive\tfalse_positive\ttrue_negative\tfalse_negative\tprecision\trecall\tspecificity\n")
+pr_writer = open("accuracy.precision_recall.tsv", 'w')
+pr_writer.write("threshold\ttrue_positive\tfalse_positive\ttrue_negative\tfalse_negative\tprecision\trecall\tspecificity\n")
 
-acc_writer = open("accuracy.bythreshold.tsv", 'w')
+acc_writer = open("accuracy.by_threshold.tsv", 'w')
 acc_writer.write("threshold\tcalled\tcorrect\taccuracy\n")
 
 for t in likelihood_thresholds:

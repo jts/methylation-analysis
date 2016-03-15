@@ -91,7 +91,9 @@ plot_event_means_for_kmer <- function(m_kmer, unmethylated_data, methylated_data
             geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
             stat_function(fun = dnorm, colour="red", arg=list(mean=m_mean, sd=m_stdv)) + 
             stat_function(fun = dnorm, arg=list(mean=c_mean, sd=c_stdv)) + 
-            ggtitle(paste("event mean current", m_kmer))
+            ggtitle(paste("event mean current", m_kmer)) + 
+            global_theme()
+
     return(p)
 }
 
@@ -165,12 +167,14 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
         geom_point() +
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
         ylab("Nanopore called sites percent methylated (ont)") +
-        ggtitle("Methylation signal at CpG Islands")
+        ggtitle("Methylation signal at CpG Islands") + 
+        global_theme()
+
    ggsave(out_file, width=10,height=10, useDingbats = FALSE)
 
    # plot histograms
-   p1 <- ggplot(ont, aes(ont_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
-   p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4)
+   p1 <- ggplot(ont, aes(ont_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4) + global_theme()
+   p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4) + global_theme()
 
    pdf("histogram.pdf")
    multiplot(plotlist=list(p1, p2), cols=1)
@@ -179,14 +183,17 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
    plot_ont_hist <- function(data, title) { 
         p <- ggplot(data, aes(ont_percent_methylated, fill=gene != ".")) +
              geom_histogram(alpha=0.5, position="identity", binwidth=4) +
-             ggtitle(title)
+             ggtitle(title) + 
+             global_theme()
+
         return(p)
    }
 
    plot_bs_hist <- function(data, title) {
       p <- ggplot(data, aes(bisulfite_percent_methylated, fill=gene != ".")) +
            geom_histogram(alpha=0.5, position="identity", binwidth=4) +
-           ggtitle(title)
+           ggtitle(title) +
+           global_theme()
       return(p)
    }
 
@@ -253,7 +260,8 @@ TSS_distance_plot <- function(out_file, ...) {
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
             ylab("Percent Methylated") + 
-            ylim(0, 1)
+            ylim(0, 1) +
+            global_theme()
     multiplot(p, cols=1)
     dev.off()
 }
@@ -261,54 +269,44 @@ TSS_distance_plot <- function(out_file, ...) {
 #
 #
 #
-call_accuracy_by_threshold <- function() {
+call_accuracy_by_threshold <- function(in_file, out_file) {
     require(ggplot2)
-    data <- read.table("accuracy.bythreshold.tsv", header=T)
+    data <- read.table(in_file, header=T)
     
-    pdf("accuracy_by_threshold.pdf", 12, 6)
-    p1 <- ggplot(data, aes(threshold, accuracy)) + geom_line() + xlim(0, 10) + ylim(0, 1) + xlab("Log-Likelihood ratio threshold"); 
-    p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log-Likelihood ratio threshold"); 
+    pdf(out_file, 12, 6)
+    p1 <- ggplot(data, aes(threshold, accuracy)) + geom_line() + xlim(0, 10) + ylim(0, 1) + xlab("Log-Likelihood ratio threshold") + global_theme()
+    p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log-Likelihood ratio threshold") + global_theme()
     multiplot(p1, p2, cols=2); 
     dev.off()
 }
 
-#
-# Global methylation analysis
-#
-global_methylation_plot <- function(outfile, ...) {
+call_accuracy_roc <- function(in_file, out_file) {
     require(ggplot2)
-    require(tools)
-    require(stringr)
-
-    files = list(...)
+    data <- read.table(in_file, header=T)
     
-    pl <- list()
-    for(i in 1:length(files[[1]])) {
-        
-        f <- files[[1]][[i]]
-        suf_pos = str_locate(f, ".sorted.bam.methyltest.sites.tsv")
+    pdf(out_file, 6, 6)
+    p1 <- ggplot(data, aes(1 - specificity, recall)) + 
+        geom_line() + 
+        xlim(0, 1) + 
+        ylim(0, 1) + 
+        xlab("False positive rate") + 
+        ylab("True positive rate") + 
+        global_theme()
+    multiplot(p1, cols=1); 
+    dev.off()
+}
 
-        base = str_sub(f, 0, suf_pos[,1] - 1)
-        
-        d <- load_site_data(f, base)
-
-        # Calculate posterior probabilty the site is methylated
-        d$posterior = 1 / (1 + exp(-d$LL_RATIO))
-
-        # Get genome-wide average methylation
-        avg = mean(d$posterior)
-        
-        # Reset dataset name to include average
-        name <- sprintf("%s (avg 5mC: %.2f)", base, avg)
-        d$dataset = name
-
-        pl[[i]] <- ggplot(subset(d, N_CPG == 1), aes(posterior)) + geom_histogram(binwidth=0.05) + xlab("P(methylated | D)") + ggtitle(name)
-    }
+call_accuracy_by_kmer <- function(in_file, out_file) {
+    require(ggplot2)
+    data <- read.table(in_file, header=T)
     
-    w = 4
-    h = length(pl) * w
-    pdf(outfile, height=h, width=w)
-    multiplot(plotlist=pl, cols=1)
+    pdf(out_file, 12, 6)
+    p1 <- ggplot(data, aes(kmer, accuracy)) + 
+        geom_point() + 
+        ylim(0, 1) + 
+        global_theme() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    multiplot(p1, cols=1); 
     dev.off()
 }
 
@@ -353,6 +351,11 @@ make_mers <- function(n, alphabet) {
 #
 # Main, when called from Rscript
 #
+require(ggplot2)
+
+# set the theme all plots will use
+global_theme = theme_classic
+
 args <- commandArgs(TRUE)
 command = args[1]
 
@@ -366,6 +369,12 @@ if(! interactive()) {
     } else if(command == "TSS_distance_plot") {
         outfile = args[length(args)]
         TSS_distance_plot(outfile, as.vector(args[c(-1, -length(args))]))
+    } else if(command == "call_accuracy_by_threshold") {
+        call_accuracy_by_threshold(args[2], args[3])
+    } else if(command == "call_accuracy_roc") {
+        call_accuracy_roc(args[2], args[3])
+    } else if(command == "call_accuracy_by_kmer") {
+        call_accuracy_by_kmer(args[2], args[3])
     } else if(command == "global_methylation") {
         outfile = args[length(args)]
         global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))

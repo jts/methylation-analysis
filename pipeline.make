@@ -85,6 +85,8 @@ all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
                   NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
                   NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 
+all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf
+
 ##################################################
 #
 # Step 1. Prepare input data 
@@ -450,3 +452,19 @@ methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
 #
 # Accuracy results
 #
+accuracy.by_threshold.tsv \
+accuracy.precision_recall.tsv \
+accuracy.by_kmer.tsv: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
+                      NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
+	python $(SCRIPT_DIR)/calculate_call_accuracy.py --unmethylated NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
+                                                    --methylated NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
+
+accuracy.roc.pdf: accuracy.precision_recall.tsv
+	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_roc $^ $@
+
+accuracy.by_threshold.pdf: accuracy.by_threshold.tsv
+	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_threshold $^ $@
+
+accuracy.by_kmer.pdf: accuracy.by_kmer.tsv
+	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_kmer $^ $@
+
