@@ -2,3 +2,4 @@
 *.fasta
 sl_initialize.sh
 *.bed
+*~

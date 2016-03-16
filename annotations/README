@@ -1,0 +1,16 @@
+Annotations:
+
+CG islands obtained from UCSC track download
+
+Gene GTF file from:
+
+wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/gencode.v24.annotation.gtf.gz
+
+TSS Generation:
+
+Fed gunzipped file into this awk script: https://github.com/sdjebali/MakeGencodeTSS
+
+Took resulting gff and converted to bed (1-0 start location, removed some columns) 
+Also calculated promoter region (2kb upstream, 200bp downstream, strand aware) using GenomicRanges
+
+gene_annotations.R
