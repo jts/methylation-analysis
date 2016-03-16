@@ -385,14 +385,11 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 %.methyltest.sites.tsv: %.methyltest.sites.bed
 	cat $< | python $(SCRIPT_DIR)/annotated_bed_to_tsv.py > $@
 
-# Download gencode transcription start sites
-gencode.v19.TSS.notlow.gff:
-    wget http://genome.crg.es/~sdjebali/Gencode/version19/Fantom5_CAGE/Inputs/gencode.v19.TSS.notlow.gff
-
 # Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
-ENCFF257GGV.bed:
-	wget https://www.encodeproject.org/files/ENCFF257GGV/@@download/ENCFF257GGV.bed.gz
-	gunzip ENCFF257GGV.bed.gz
+BISULFITE_BED=ENCFF279HCL.bed
+$(BISULFITE_BED):
+	wget https://www.encodeproject.org/files/ENCFF279HCL/@@download/$(BISULFITE_BED).gz
+	gunzip $(BISULFITE_BED).gz
 
 #
 # CpG Island Methylation Results
@@ -411,8 +408,8 @@ irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstr
 
 
 # Calculate a summary data for each CpG island from the bisulfite data
-NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.bed bedtools.version
-	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a ENCFF257GGV.bed | \
+NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed $(BISULFITE_BED) bedtools.version
+	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a $(BISULFITE_BED) | \
         python $(SCRIPT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
 
 # Calculate a summary score for each CpG island from the ONT reads
@@ -428,19 +425,21 @@ NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed ENCFF257GGV.
 # TSS results
 #
 
+TSS_FILE=$(SCRIPT_DIR)/annotations/gencode.v24.tss.bed.gz
+
 # Calculate methylation as a function of distance from a TSS for the ONT data
-%.methylated_sites.distance_to_TSS.bed: %.sorted.bam.methyltest.sites.bed bedtools.version gencode.v19.TSS.notlow.gff
-	bedtools/bin/bedtools closest -D b -b <(cat gencode.v19.TSS.notlow.gff | bedtools/bin/bedtools sort)\
-                                       -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed | bedtools/bin/bedtools sort) > $@
+%.methylated_sites.distance_to_TSS.bed: %.sorted.bam.methyltest.sites.bed bedtools.version $(TSS_FILE)
+	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
+                                       -a <(cat $*.sorted.bam.methyltest.sites.bed | bedtools/bin/bedtools sort) > $@
 
 
 %.methylated_sites.distance_to_TSS.table: %.methylated_sites.distance_to_TSS.bed
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type ont -c $(CALL_THRESHOLD) -i $^ > $@
 
 # Calculate methylation as a function of distance for the bisulfite data
-NA12878.bisulfite.distance_to_TSS.bed: ENCFF257GGV.bed bedtools.version gencode.v19.TSS.notlow.gff
-	bedtools/bin/bedtools closest -D b -b <(cat gencode.v19.TSS.notlow.gff | bedtools/bin/bedtools sort)\
-                                       -a ENCFF257GGV.bed > $@
+NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_FILE)
+	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
+                                       -a <(cat $(BISULFITE_BED) | bedtools/bin/bedtools sort) > $@
 
 NA12878.bisulfite.distance_to_TSS.table: NA12878.bisulfite.distance_to_TSS.bed
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
@@ -450,6 +449,11 @@ methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                  NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
                                  NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
+
+methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
+                                               NA12878.native.merged.methylated_sites.distance_to_TSS.table
+	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot_by_chromosome $^ $@
+
 
 #
 # Site likelihood plot

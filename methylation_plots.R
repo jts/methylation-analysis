@@ -217,7 +217,7 @@ make_display_name <- function(structured_name) {
     sample = fields[1]
     treatment = fields[2]
 
-    id = str_join(sample, treatment, sep=" ")
+    id = str_c(sample, treatment, sep=" ")
 
     if(treatment == "bisulfite") {
         return(id)
@@ -239,9 +239,7 @@ load_distance_data <- function(filename, tag) {
     return(data)
 }
 
-TSS_distance_plot <- function(out_file, ...) {
-    require(ggplot2)
-    
+load_all_TSS_data <- function(...) {
     in_files = list(...)
     all_data = NULL
     for(i in 1:length(in_files[[1]])) {
@@ -253,15 +251,43 @@ TSS_distance_plot <- function(out_file, ...) {
             all_data = rbind(all_data, data)
         }
     }
+    return(all_data)
+}
+
+TSS_distance_plot <- function(out_file, ...) {
+    require(ggplot2)
+ 
+    all_data = load_all_TSS_data(...)   
 
     pdf(out_file, 12, 4)
-    p <- ggplot(all_data, aes(max_distance, percent_methylated, group=dataset, color=dataset)) + 
+    p <- ggplot(subset(all_data, chromosome == "all"), aes(distance, percent_methylated, group=dataset, color=dataset)) + 
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
             ylab("Percent Methylated") + 
             ylim(0, 1) +
             global_theme()
+    multiplot(p, cols=1)
+    dev.off()
+}
+
+TSS_distance_plot_by_chromosome <- function(out_file, ...) {
+    require(ggplot2)
+    
+    all_data = load_all_TSS_data(...)   
+
+    #http://stackoverflow.com/questions/19014531/sort-by-chromosome-name
+    chrOrder <-paste("chr", c((1:22),"X","Y","M"), sep="")
+    all_data$chromosome = factor(all_data$chromosome, levels=chrOrder, ordered=TRUE)
+    pdf(out_file, 10, 60)
+    p <- ggplot(subset(all_data, chromosome != "all"), aes(distance, percent_methylated, group=dataset, color=dataset)) + 
+            geom_point(size=1) + 
+            geom_line(size=0.1) + 
+            xlab("Binned distance to TSS") + 
+            ylab("Percent Methylated") + 
+            ylim(0, 1) +
+            facet_grid(chromosome ~ .) +
+            theme_bw()
     multiplot(p, cols=1)
     dev.off()
 }
@@ -380,7 +406,7 @@ make_mers <- function(n, alphabet) {
 require(ggplot2)
 
 # set the theme all plots will use
-global_theme = theme_classic
+global_theme = theme_bw
 
 args <- commandArgs(TRUE)
 command = args[1]
@@ -395,6 +421,9 @@ if(! interactive()) {
     } else if(command == "TSS_distance_plot") {
         outfile = args[length(args)]
         TSS_distance_plot(outfile, as.vector(args[c(-1, -length(args))]))
+    } else if(command == "TSS_distance_plot_by_chromosome") {
+        outfile = args[length(args)]
+        TSS_distance_plot_by_chromosome(outfile, as.vector(args[c(-1, -length(args))]))
     } else if(command == "call_accuracy_by_threshold") {
         call_accuracy_by_threshold(args[2], args[3])
     } else if(command == "call_accuracy_roc") {
