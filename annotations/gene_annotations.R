@@ -13,7 +13,9 @@ gencode.tss.gr=GRanges(seqnames=gencode[,1], ranges=IRanges(start=gencode[,4],en
 ##Find promoter region, using GenomicRanges Defaults (2kb upstream, 200bp downstream, strand aware)
 gencode.promoter.gr=promoters(gencode.tss.gr)
 
-gencode.promoter=cbind(as.character(seqnames(gencode.promoter.gr)), start(gencode.promoter.gr)-1, end(gencode.promoter.gr)-1, "promoter", 0, as.character(strand(gencode.promoter.gr)))
+gencode.promoter=cbind(as.character(seqnames(gencode.promoter.gr)), format(start(gencode.promoter.gr)-1, scientific=FALSE),
+                       format(end(gencode.promoter.gr)-1, scientific=FALSE), "promoter", 0, as.character(strand(gencode.promoter.gr)))
 
 write.table(gencode.promoter, gzfile("gencode.v24.promoter.bed.gz"), row.names=F, col.names=F, sep="\t", quote=F)
+
 
