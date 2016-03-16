@@ -54,7 +54,7 @@ class CpGIslandRecord:
         self.start = int(fields[1])
         self.end = int(fields[2])
         kv_dict = str2dict(fields[3])
-        self.gene = kv_dict["Gene"]
+        self.gene = kv_dict["Feature"]
 
     def key(self):
         return self.chromosome + ":" + str(self.start) + "-" + str(self.end)

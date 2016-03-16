@@ -395,28 +395,27 @@ $(BISULFITE_BED):
 # CpG Island Methylation Results
 #
 
-# Download database of CpG islands from Irizarry's method
-irizarry.cpg_islands.bed:
-	wget http://web1.sph.emory.edu/users/hwu30/software/makeCGI/model-based-cpg-islands-hg19.txt
-	cat model-based-cpg-islands-hg19.txt | python $(SCRIPT_DIR)/tsv_to_annotated_bed.py > $@
+CGI_FILE=$(SCRIPT_DIR)/annotations/cgisl_hg38.bed.gz
+PROMOTER_FILE=$(SCRIPT_DIR)/annotations/gencode.v24.promoter.bed.gz
+CGI_PROMOTER_BED=cpg_islands.promoter.bed
 
 # Annotate the CpG islands with whether they are <= 2kb upstream of a gene
-irizarry.cpg_islands.genes.bed: irizarry.cpg_islands.bed gencode_genes_2kb_upstream.bed bedtools.version
-	bedtools/bin/bedtools map -o first -c 4 -a <(cat irizarry.cpg_islands.bed | bedtools/bin/bedtools sort) \
-                                            -b <(cat gencode_genes_2kb_upstream.bed | bedtools/bin/bedtools sort) | \
-                                            awk '{ print $$1 "\t" $$2 "\t" $$3 "\t" $$4 ";Gene=" $$5 }' > $@
+$(CGI_PROMOTER_BED): $(CGI_FILE) $(PROMOTOR_FILE) bedtools.version
+	bedtools/bin/bedtools map -o first -c 4 -a <(zcat $(CGI_FILE) | bedtools/bin/bedtools sort) \
+                                            -b <(zcat $(PROMOTER_FILE) | bedtools/bin/bedtools sort) | \
+                                            sed s/:_/=/ | awk '{ print $$1 "\t" $$2 "\t" $$3 "\t" $$4 ";Feature=" $$5 }' > $@
 
 
 # Calculate a summary data for each CpG island from the bisulfite data
-NA12878.bisulfite_score.cpg_islands: irizarry.cpg_islands.genes.bed $(BISULFITE_BED) bedtools.version
-	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed -a $(BISULFITE_BED) | \
-        python $(SCRIPT_DIR)/calculate_bisulfite_signal_for_cpg_islands.py > $@
+NA12878.bisulfite_score.cpg_islands: $(CGI_PROMOTER_BED) $(BISULFITE_BED) bedtools.version
+	bedtools/bin/bedtools intersect -wb -b $(CGI_PROMOTER_BED) -a $(BISULFITE_BED) | \
+        python $(SCRIPT_DIR)/calculate_methylation_at_cpg_islands.py -t bisulfite > $@
 
 # Calculate a summary score for each CpG island from the ONT reads
-%.ont_score.cpg_islands: irizarry.cpg_islands.genes.bed %.sorted.bam.methyltest.sites.bed bedtools.version
-	bedtools/bin/bedtools intersect -wb -b irizarry.cpg_islands.genes.bed \
-                                        -a <(awk '{ print "chr" $$0 }' $*.sorted.bam.methyltest.sites.bed) | \
-        python $(SCRIPT_DIR)/calculate_ont_signal_for_cpg_islands.py -c $(CALL_THRESHOLD) > $@
+%.ont_score.cpg_islands: $(CGI_PROMOTER_BED) %.sorted.bam.methyltest.sites.bed bedtools.version
+	bedtools/bin/bedtools intersect -wb -b $(CGI_PROMOTER_BED) \
+                                        -a $*.sorted.bam.methyltest.sites.bed | \
+        python $(SCRIPT_DIR)/calculate_methylation_at_cpg_islands.py -t ont -c $(CALL_THRESHOLD) > $@
 
 %.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
 	Rscript $(SCRIPT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@

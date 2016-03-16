@@ -159,52 +159,19 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     ont$ont_percent_methylated = 100 * (ont$called_sites_methylated / ont$called_sites)
 
     bisulfite <- read_bisulfite_scores_file(bisulfite_file)
+    bisulfite$bisulfite_percent_methylated = 100 * (bisulfite$called_sites_methylated / bisulfite$called_sites)
     
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
-    merged$near_gene = merged$gene.x != "."
-    ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, color=near_gene)) + 
+    merged$in_promoter = merged$feature.x == "promoter"
+    ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, color=in_promoter)) + 
         geom_point() +
         xlab("ENCODE NA12878 percent methylated (bisulfite)") +
-        ylab("Nanopore called sites percent methylated (ont)") +
+        ylab("Nanopore estimated percent methylated") +
         ggtitle("Methylation signal at CpG Islands") + 
         global_theme()
 
    ggsave(out_file, width=10,height=10, useDingbats = FALSE)
-
-   # plot histograms
-   p1 <- ggplot(ont, aes(ont_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4) + global_theme()
-   p2 <- ggplot(bisulfite, aes(bisulfite_percent_methylated, fill=gene != ".")) + geom_histogram(alpha=0.5, position="identity", binwidth=4) + global_theme()
-
-   pdf("histogram.pdf")
-   multiplot(plotlist=list(p1, p2), cols=1)
-   dev.off()
-
-   plot_ont_hist <- function(data, title) { 
-        p <- ggplot(data, aes(ont_percent_methylated, fill=gene != ".")) +
-             geom_histogram(alpha=0.5, position="identity", binwidth=4) +
-             ggtitle(title) + 
-             global_theme()
-
-        return(p)
-   }
-
-   plot_bs_hist <- function(data, title) {
-      p <- ggplot(data, aes(bisulfite_percent_methylated, fill=gene != ".")) +
-           geom_histogram(alpha=0.5, position="identity", binwidth=4) +
-           ggtitle(title) +
-           global_theme()
-      return(p)
-   }
-
-   p_ont_x <- plot_ont_hist(subset(ont, str_sub(key, 1, 4) == "chrX"), "ONT ChrX") 
-   p_ont_not_x <- plot_ont_hist(subset(ont, str_sub(key, 1, 4) != "chrX"), "ONT Not ChrX")
-   p_bs_x <- plot_bs_hist(subset(bisulfite, str_sub(key, 1, 4) == "chrX"), "Bisulfite ChrX") 
-   p_bs_not_x <- plot_bs_hist(subset(bisulfite, str_sub(key, 1, 4) != "chrX"), "Bisulfite Not ChrX")
-
-   pdf("histogram_chromosomes.pdf", 15, 10)
-   multiplot(plotlist=list(p_ont_x, p_ont_not_x, p_bs_x, p_bs_not_x), cols=2)
-   dev.off()
 }
 
 #
