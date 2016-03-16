@@ -85,7 +85,9 @@ all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
                   NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
                   NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 
-all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf
+all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf site.likelihood.distribution.pdf
+
+all-plots: all-accuracy-plots all-island-plots
 
 ##################################################
 #
@@ -374,7 +376,7 @@ training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR
 	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
 	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-        -m ecoli_er2925.pcr_MSssI.timp.alphabet_cpg.fofn \
+        -m $(TRAINED_MODEL_FOFN) \
         -b $(TMP_BAM) \
         -r $(TMP_FASTA) \
         -g $(TMP_REF)
