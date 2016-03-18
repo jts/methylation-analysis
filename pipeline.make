@@ -87,7 +87,9 @@ all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
 
 all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf site.likelihood.distribution.pdf
 
-all-plots: all-accuracy-plots all-island-plots
+all-TSS-plots: methylation_by_TSS_distance.pdf methylation_by_TSS_distance_by_chromosome.pdf 
+
+all-plots: all-accuracy-plots all-island-plots all-TSS-plots
 
 ##################################################
 #
