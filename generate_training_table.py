@@ -4,10 +4,16 @@ from collections import namedtuple
 import sys
 import csv
 import os
+import math
+import argparse
 
 # define datatypes
 KmerModel = namedtuple('KmerModel', ['kmer', 'level_mean', 'level_stdv', 'sd_mean', 'sd_stdv'])
 SummaryRecord = namedtuple('KmerModel', ['model', 'kmer', 'was_trained', 'num_training_events', 'trained_level_mean', 'trained_level_stdv'])
+TableRow = namedtuple('TableRow', ['sample', 'treatment', 'lab', 'date', 
+                                   'model', 'alphabet', 'total_events', 
+                                   'total_kmers', 'trained_kmers', 
+                                   'd0_1', 'd0_5', 'd1_0', 'd2_0'])
 
 def read_model(fn):
     fh = open(fn)
@@ -53,23 +59,87 @@ def load_ont_models_from_fofn(ont_fofn, out_model_set):
         filename = filename.rstrip()
         out_model_set[filename] = read_model(filename)
 
+def display_sample_name(s):
+    fields = s.split("_")
+    assert(fields[0] == "ecoli")
+    return "\\emph{E. coli}" + " " + fields[1].upper()
+
+def display_model(s):
+    model_dict = {'t.006':'template', 'c.p1.006':'complement.pop1', 'c.p2.006':'complement.pop2'}
+    return model_dict[s]
+
+# From: http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
+def display_number(n):
+    suffix= ['','K','M','B' ]
+    n = float(n)
+    millidx = max(0,min(len(suffix)-1,
+                    int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
+
+    return '{:.0f}{}'.format(n / 10**(3 * millidx), suffix[millidx])
+
+def display_treatment(s):
+    return s.replace("_", "-")
+
+def print_table_latex(table, model, treatment, alphabet):
+
+    field_sep = " & "
+    # Print a header
+    header_fields = ["sample", "run", "training events", "trained kmers"]
+    header_fields += [str(x) for x in diff_cuts]
+    
+    table_spec_fields = "c" * len(header_fields)
+    table_spec_str = "|" + "|".join(table_spec_fields) + "|"
+
+    print r'\begin{table}[h]'
+    print r'\begin{tabular}{' + table_spec_str + "}"
+    print r'\hline'
+    print field_sep.join(header_fields) + r'\\'
+    print r'\hline'
+    for row in table:
+        if row.model != model or row.treatment != treatment or row.alphabet != alphabet:
+            continue
+
+        assert(diff_cuts[0] == 0.1)
+        assert(diff_cuts[1] == 0.5)
+        assert(diff_cuts[2] == 1.0)
+        assert(diff_cuts[3] == 2.0)
+
+        out = [ display_sample_name(row.sample) + " (" + display_treatment(row.treatment) + ")",
+                row.lab + " " + row.date,
+                display_number(row.total_events), 
+                row.trained_kmers, 
+                row.d0_1, 
+                row.d0_5, 
+                row.d1_0, 
+                row.d2_0]
+        print " & ".join([str(x) for x in out]) + r'\\'
+    print r'\hline'
+    print r'\end{tabular}'
+
+    caption_str = "Model training results for %s-treated DNA for the %s strand over the %s alphabet.\n" % (display_treatment(treatment), display_model(model), alphabet)
+    caption_str += "The final four fields are the number of k-mers where the mean of the trained Gaussian differs from the ONT-trained mean by more than x pA"
+    caption_str += "\nTODO finalize."
+    print r'\caption{' + caption_str + '}'
+    print r'\end{table}'
+
 #
 # main
-#a
 ont_models = dict()
 load_ont_models_from_fofn("ont.alphabet_nucleotide.fofn", ont_models)
 load_ont_models_from_fofn("ont.alphabet_cpg.fofn", ont_models)
+
+parser = argparse.ArgumentParser( description='Generate latex-formatted tables after model training')
+parser.add_argument('--treatment', type=str, required=True)
+parser.add_argument('--alphabet', type=str, required=True)
+args, files = parser.parse_known_args()
 
 # We calculate the number of kmers that trained more than 0.1pA, 0.5pA, etc
 # different than the reference model
 diff_cuts = [ 0.1, 0.5, 1.0, 2.0]
 
-# Print a header
-header_fields = ["sample", "treatment", "lab", "date", "model", "alphabet", "total_events", "total_kmers", "trained_kmers"]
-header_fields += [str(x) for x in diff_cuts]
-print "\t".join(header_fields)
+table_rows = list()
 
-for summary_file in sys.argv[1:]:
+for summary_file in files:
     summary = read_summary(summary_file)
 
     # Parse the summary filename
@@ -83,6 +153,7 @@ for summary_file in sys.argv[1:]:
     lab = fn_fields[3]
     date = fn_fields[4]
     alphabet = fn_fields[5]
+    short_alphabet = alphabet.split("_")[1]
 
     for model_short_name in summary:
         ont_model_name = model_short_name + ".ont." + alphabet + ".model"
@@ -107,7 +178,13 @@ for summary_file in sys.argv[1:]:
                 if diff >= c:
                     diff_cut_count[i] += 1
 
-        out = [sample, treatment, lab, date, model_short_name, alphabet, total_events, total_kmers, total_trained]
-        out += diff_cut_count
+        
+        result = [sample, treatment, lab, date, model_short_name, short_alphabet, total_events, total_kmers, total_trained]
+        result += diff_cut_count
+        table_rows.append(TableRow(*result))
 
-        print "\t".join([str(x) for x in out])
+        #print "\t".join([str(x) for x in out])
+ 
+print_table_latex(table_rows, "t.006", args.treatment, args.alphabet)
+print_table_latex(table_rows, "c.p1.006", args.treatment, args.alphabet)
+print_table_latex(table_rows, "c.p2.006", args.treatment, args.alphabet)
