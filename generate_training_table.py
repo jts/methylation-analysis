@@ -65,7 +65,7 @@ def display_sample_name(s):
     return "\\emph{E. coli}" + " " + fields[1].upper()
 
 def display_model(s):
-    model_dict = {'t.006':'template', 'c.p1.006':'complement.pop1', 'c.p2.006':'complement.pop2'}
+    model_dict = {'t.006':'template', 'c.p1.006':'comp.pop1', 'c.p2.006':'comp.pop2'}
     return model_dict[s]
 
 # From: http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
@@ -78,45 +78,66 @@ def display_number(n):
     return '{:.0f}{}'.format(n / 10**(3 * millidx), suffix[millidx])
 
 def display_treatment(s):
-    return s.replace("_", "-")
+    return s.replace("_", "+").replace("MSssI", "M.SssI").replace("pcr", "PCR")
 
-def print_table_latex(table, model, treatment, alphabet):
+def print_table_latex(table, treatment, alphabet):
 
     field_sep = " & "
     # Print a header
-    header_fields = ["sample", "run", "training events", "trained kmers"]
+    header_fields = ["model", "sample", "run", "training events", "trained kmers"]
     header_fields += [str(x) for x in diff_cuts]
     
     table_spec_fields = "c" * len(header_fields)
     table_spec_str = "|" + "|".join(table_spec_fields) + "|"
 
     print r'\begin{table}[h]'
+    print r'\begin{adjustbox}{center}'
     print r'\begin{tabular}{' + table_spec_str + "}"
     print r'\hline'
     print field_sep.join(header_fields) + r'\\'
-    print r'\hline'
-    for row in table:
-        if row.model != model or row.treatment != treatment or row.alphabet != alphabet:
-            continue
 
-        assert(diff_cuts[0] == 0.1)
-        assert(diff_cuts[1] == 0.5)
-        assert(diff_cuts[2] == 1.0)
-        assert(diff_cuts[3] == 2.0)
+    for model in ["t.006", "c.p1.006", "c.p2.006"]:
 
-        out = [ display_sample_name(row.sample) + " (" + display_treatment(row.treatment) + ")",
-                row.lab + " " + row.date,
-                display_number(row.total_events), 
-                row.trained_kmers, 
-                row.d0_1, 
-                row.d0_5, 
-                row.d1_0, 
-                row.d2_0]
-        print " & ".join([str(x) for x in out]) + r'\\'
-    print r'\hline'
+        print r'\hline'
+        # Count the number of rows in this block
+        num_rows = 0
+        for row in table:
+            if row.model != model or row.treatment != treatment or row.alphabet != alphabet:
+                continue
+            num_rows += 1
+
+        # Print the rows
+        first_row_in_model = True
+        for row in table:
+            if row.model != model or row.treatment != treatment or row.alphabet != alphabet:
+                continue
+
+            assert(diff_cuts[0] == 0.1)
+            assert(diff_cuts[1] == 0.5)
+            assert(diff_cuts[2] == 1.0)
+            assert(diff_cuts[3] == 2.0)
+
+            model_out = ""
+
+            if first_row_in_model:
+                model_out = r'\multirow{' + str(num_rows) + '}{*}{' + display_model(model) + r'}'
+                first_row_in_model = False
+
+            out = [ model_out,
+                    display_sample_name(row.sample) + " (" + display_treatment(row.treatment) + ")",
+                    row.lab + " " + row.date,
+                    display_number(row.total_events), 
+                    row.trained_kmers, 
+                    row.d0_1, 
+                    row.d0_5, 
+                    row.d1_0, 
+                    row.d2_0]
+            print " & ".join([str(x) for x in out]) + r'\\'
+        print r'\hline'
     print r'\end{tabular}'
+    print r'\end{adjustbox}'
 
-    caption_str = "Model training results for %s-treated DNA for the %s strand over the %s alphabet.\n" % (display_treatment(treatment), display_model(model), alphabet)
+    caption_str = "Model training results for %s-treated DNA over the %s alphabet.\n" % (display_treatment(treatment), alphabet)
     caption_str += "The final four fields are the number of k-mers where the mean of the trained Gaussian differs from the ONT-trained mean by more than x pA"
     caption_str += "\nTODO finalize."
     print r'\caption{' + caption_str + '}'
@@ -185,6 +206,4 @@ for summary_file in files:
 
         #print "\t".join([str(x) for x in out])
  
-print_table_latex(table_rows, "t.006", args.treatment, args.alphabet)
-print_table_latex(table_rows, "c.p1.006", args.treatment, args.alphabet)
-print_table_latex(table_rows, "c.p2.006", args.treatment, args.alphabet)
+print_table_latex(table_rows, args.treatment, args.alphabet)

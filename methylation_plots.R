@@ -294,10 +294,11 @@ call_accuracy_by_kmer <- function(in_file, out_file) {
     data <- read.table(in_file, header=T)
     
     pdf(out_file, 12, 6)
-    p1 <- ggplot(data, aes(kmer, accuracy)) + 
+    p1 <- ggplot(data, aes(kmer, 1 - accuracy)) + 
         geom_point() + 
-        ylim(0, 1) + 
         global_theme() +
+        xlab("k-mer preceding CpG site") +
+        ylab("Error rate") +
         theme(axis.text.x = element_text(angle = 90, hjust = 1))
     multiplot(p1, cols=1); 
     dev.off()

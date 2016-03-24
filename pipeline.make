@@ -113,7 +113,6 @@ ECOLI_ER2925_MSSSI_RUN2_DATA=ecoli_er2925.MSssI.timp.100615.fasta
 
 ECOLI_ER2925_PCR_RUN1_DATA=ecoli_er2925.pcr.timp.113015.fasta
 ECOLI_ER2925_PCR_RUN2_DATA=ecoli_er2925.pcr.timp.021216.fasta
-ECOLI_ER2925_PCR_RUN3_DATA=ecoli_er2925.pcr.timp.113015_recall.fasta
 ECOLI_ER2925_PCR_MSSSI_RUN1_DATA=ecoli_er2925.pcr_MSssI.timp.113015.fasta
 ECOLI_ER2925_PCR_MSSSI_RUN2_DATA=ecoli_er2925.pcr_MSssI.timp.021216.fasta
 
@@ -138,7 +137,6 @@ $(ECOLI_ER2925_NATIVE_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_MSSSI_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-$(ECOLI_ER2925_PCR_RUN3_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
@@ -312,6 +310,7 @@ t.006.$(PREFIX).model: $(PREFIX).fofn
 c.p1.006.$(PREFIX).model: $(PREFIX).fofn
 c.p2.006.$(PREFIX).model: $(PREFIX).fofn
 $(DATASET).sorted.bam.methyltrain.tsv: $(PREFIX).fofn
+methyltrain.$(PREFIX).model.summary: $(PREFIX).fofn
 
 endef
 
@@ -334,7 +333,6 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),nucleotid
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN3_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleotide))
 
@@ -366,6 +364,46 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R training_plots $^
 
+#
+# 3d. Make training tables from the summary files
+#
+
+# PCR data
+
+# nucleotide
+results/pcr.nucleotide.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
+                                           methyltrain.$(ECOLI_ER2925_PCR_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary) \
+                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
+	mkdir -p results
+	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr --alphabet nucleotide $^ > $@
+
+# cpg
+results/pcr.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
+                                           methyltrain.$(ECOLI_ER2925_PCR_RUN2_DATA:.fasta=.alphabet_cpg.model.summary) \
+                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary)
+	mkdir -p results
+	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr --alphabet cpg $^ > $@
+
+# PCR + M.SssI
+
+# nucleotide
+results/pcr_MSssI.nucleotide.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
+                                                 methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary)
+	mkdir -p results
+	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr_MSssI --alphabet nucleotide $^ > $@
+
+# CpG
+results/pcr_MSssI.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
+                                          methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_cpg.model.summary)
+	mkdir -p results
+	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr_MSssI --alphabet cpg $^ > $@
+
+# Merge all tables
+results/all.training.tables.tex: results/pcr.nucleotide.training.table.tex \
+                                 results/pcr_MSssI.nucleotide.training.table.tex \
+                                 results/pcr.cpg.training.table.tex \
+                                 results/pcr_MSssI.cpg.training.table.tex
+	cat $^ > $@
 ##################################################
 #
 # Step 4. Human genome analysis
@@ -442,14 +480,16 @@ NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_F
 	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
                                        -a <(cat $(BISULFITE_BED) | bedtools/bin/bedtools sort) > $@
 
-NA12878.bisulfite.distance_to_TSS.table: NA12878.bisulfite.distance_to_TSS.bed
+%.bisulfite.distance_to_TSS.table: %.bisulfite.distance_to_TSS.bed
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
+
 
 methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                  NA12878.native.merged.methylated_sites.distance_to_TSS.table \
                                  NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
                                  NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
+
 
 methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                                NA12878.native.merged.methylated_sites.distance_to_TSS.table
