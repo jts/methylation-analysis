@@ -124,6 +124,13 @@ HUMAN_NA12878_NATIVE_MERGED_DATA=NA12878.native.merged.fasta
 HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.021616.fasta
 HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
 
+# Cancer pair
+HUMAN_MCF10A_RR1_DATA=mcf10a.rr1.timp.031116.fasta
+HUMAN_MDAMB231_RR1_DATA=mdamb231.rr1.timp.031316.fasta
+
+HUMAN_MCF10A_RR2_DATA=mcf10a.rr2.timp.031116.fasta
+HUMAN_MDAMB231_RR2_DATA=mdamb231.rr2.timp.031316.fasta
+
 # For each data set that we use, define a variable containing its reference
 
 # E.coli
@@ -148,6 +155,11 @@ $(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_NATIVE_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_PCR_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+
+$(HUMAN_MCF10A_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MDAMB231_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MCF10A_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MDAMB231_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 
 # Reference and region file used for model training
 TRAINING_REFERENCE=$(ECOLI_REFERENCE)
@@ -511,6 +523,11 @@ NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_F
 	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
                                        -a <(cat $(BISULFITE_BED) | bedtools/bin/bedtools sort) > $@
 
+# Calculate methylation as a function of distance for the bisulfite data
+%.bisulfite.distance_to_TSS.bed: %.bisulfite.bed bedtools.version $(TSS_FILE)
+	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
+                                       -a <(cat $< | bedtools/bin/bedtools sort) > $@
+
 %.bisulfite.distance_to_TSS.table: %.bisulfite.distance_to_TSS.bed
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
 
@@ -520,7 +537,6 @@ methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                  NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
                                  NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
-
 
 methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                                NA12878.native.merged.methylated_sites.distance_to_TSS.table
