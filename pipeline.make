@@ -361,8 +361,31 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 #
 # 3c. Make training plots
 #
-training_plots_abcMG_event_mean.pdf: $(MSSSI_TRAINING_BAM).methyltrain.tsv $(PCR_TRAINING_BAM).methyltrain.tsv
-	Rscript $(SCRIPT_DIR)/methylation_plots.R training_plots $^
+
+# Figure 1, three panels showing baseline, strong methylation signal, weak/no methylation signal
+PANEL_A_SET=ecoli_er2925.pcr.timp.021216.alphabet_nucleotide
+PANEL_BC_SET1=ecoli_er2925.pcr.timp.021216.alphabet_cpg
+PANEL_BC_SET2=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg
+
+PANEL_A_KMER="AGGTAG"
+PANEL_B_KMER="AGGTMG"
+PANEL_C_KMER="TMGAGT"
+
+results/figure1_emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
+                               methyltrain.$(PANEL_BC_SET1).panelB.tsv \
+                               methyltrain.$(PANEL_BC_SET2).panelB.tsv \
+                               methyltrain.$(PANEL_BC_SET1).panelC.tsv \
+                               methyltrain.$(PANEL_BC_SET2).panelC.tsv
+	Rscript $(SCRIPT_DIR)/methylation_plots.R make_emissions_figure $@ $^
+
+%.panelA.tsv: %.model.round4.events.tsv
+	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_A_KMER))' > $@
+
+%.panelB.tsv: %.model.round4.events.tsv
+	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_B_KMER))' > $@
+
+%.panelC.tsv: %.model.round4.events.tsv
+	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_C_KMER))' > $@
 
 #
 # 3d. Make training tables from the summary files

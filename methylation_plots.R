@@ -140,6 +140,92 @@ make_training_plots <- function(training_in, control_in)
     dev.off()
 }
 
+make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
+{
+    require(grid)
+    palette <- c("red", "blue")
+
+    # merge datasets
+    all_data <- NULL
+    for(n in names) {
+        if(is.null(all_data)) {
+            all_data <- data_sets[[n]]
+        } else {
+            all_data <- rbind(all_data, data_sets[[n]])
+        }
+    }
+
+    # extract the kmer we are plotting for the title
+    # NB all rows have the same kmer
+    kmer <- head(all_data, 1)$model_kmer
+
+    # make the histogram
+    p <- ggplot(all_data, aes(level_mean, fill=dataset)) +
+            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
+            scale_fill_manual(values=palette) +
+            xlab("Measured event level (pA)") +
+            ggtitle(paste("Event distribution for k-mer", kmer))
+
+    # add panel label
+    p <- p + annotation_custom(textGrob(label = panel_label, x = 0.05, y = 0.95, gp=gpar(fontsize=20)))
+
+    # add gaussian fits
+    idx <- 1
+    for(n in names) {
+        p <- p + stat_function(fun = dnorm, colour=palette[[idx]], arg=list(mean=param_means[[n]], sd=param_stdvs[[n]]))
+        idx <- idx + 1
+    }
+
+    return(p + global_theme())
+}
+
+#
+# Emissions figure - examples of distributions
+#
+make_emissions_figure <- function(outfile,
+                                  panelA_file,
+                                  panelB1_file,
+                                  panelB2_file,
+                                  panelC1_file,
+                                  panelC2_file)
+{
+    require(stringr)
+
+    data_sets <- list()
+    param_means <- list()
+    param_stdvs <- list()
+
+    idx <- 1
+    for(current_file in c(panelA_file, panelB1_file, panelB2_file, panelC1_file, panelC2_file)) {
+
+        # Parse the structured name
+        name_fields = str_split(current_file, fixed("."))[[1]]
+        display_name <- str_replace(str_replace(name_fields[3], "pcr", "PCR"), "_", "+")
+
+        # Load the data
+        data_sets[[current_file]] <- load_training_data(current_file, display_name)
+
+        # parse model parameters
+        strand = head(data_sets[[current_file]], 1)$model
+        kmer = head(data_sets[[current_file]], 1)$model_kmer
+        modelname  <- str_c(c(strand, name_fields[2:6], "model"), collapse=".")
+        params <- read.table(modelname, col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
+
+        # save the parameters for this kmer
+        kmer_params <- get_params_for_kmer(kmer, params)
+        param_means[[current_file]] <- kmer_params[1,]$level_mean
+        param_stdvs[[current_file]] <- kmer_params[1,]$level_stdv
+    }
+
+    pdf(outfile, 7, 15)
+    panel_A <- make_panel(list(panelA_file), data_sets, param_means, param_stdvs, "A")
+    panel_B <- make_panel(list(panelB1_file, panelB2_file), data_sets, param_means, param_stdvs, "B")
+    panel_C <- make_panel(list(panelC1_file, panelC2_file), data_sets, param_means, param_stdvs, "C")
+
+    multiplot(panel_A, panel_B, panel_C, cols=1)
+    dev.off()
+}
+
 #
 # Human analysis plots
 #
@@ -382,6 +468,8 @@ command = args[1]
 if(! interactive()) {
     if(command == "training_plots") {
         make_training_plots(args[2], args[3])
+    } else if(command == "make_emissions_figure") {
+        make_emissions_figure(args[2], args[3], args[4], args[5], args[6], args[7])
     } else if(command == "strand_classification_plot") {
         strand_classification_plot(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
