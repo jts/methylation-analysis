@@ -1,4 +1,7 @@
 import math
+import os
+import csv
+from collections import namedtuple
 
 #
 # Utility functions
@@ -9,7 +12,7 @@ def str2dict(s):
     return dict( (k, v) for k, v in (pair.split("=") for pair in s.split(";")) )
 
 #
-# This class parses a line from a *.methyltest.sites.bed file
+# Parse a record from a methyltest.sites.bed file
 # 
 class MethyltestRecord:
     def __init__(self, fields):
@@ -46,6 +49,9 @@ class MethyltestRecord:
     def posterior_num_methylated_sites(self):
         return self.num_cpgs * self.posterior_methylated()
 
+#
+# Parse a record from a CPG island file
+#
 class CpGIslandRecord:
     def __init__(self, fields):
         assert(len(fields) == 4)
@@ -58,6 +64,9 @@ class CpGIslandRecord:
     def key(self):
         return self.chromosome + ":" + str(self.start) + "-" + str(self.end)
 
+#
+# Parse a BED record from a bisulfite file
+#
 class BisulfiteRecord:
     def __init__(self, fields):
         assert(len(fields) == 11)
@@ -72,3 +81,70 @@ class BisulfiteRecord:
 
     def get_num_methylated_reads(self):
         return self.num_reads * (self.percent_methylated / 100.0)
+
+#
+# Parse an ONT model file
+#
+ModelKmer = namedtuple('ModelKmer', ['kmer', 'level_mean', 'level_stdv', 'sd_mean', 'sd_stdv'])
+class ONTModel:
+    def __init__(self, filename):
+        fh = open(filename)
+        self.kmers = dict()
+
+        for line in fh:
+            line = line.rstrip()
+
+            # copy then skip header lines
+            if line[0] == '#' or line.find("kmer") == 0:
+                continue
+
+            fields = line.split()
+            a = ModelKmer(fields[0],
+                          float(fields[1]),
+                          float(fields[2]),
+                          float(fields[3]),
+                          float(fields[4]))
+            self.kmers[a.kmer] = a
+
+    def get_num_kmers(self):
+        return len(self.kmers)
+
+#
+# Parse a .summary file output by methyltrain
+#
+SummaryRecord = namedtuple('SummaryRecord', ['model', 'kmer', 'was_trained', 'num_training_events', 'trained_level_mean', 'trained_level_stdv'])
+class TrainingSummary:
+    def __init__(self, filename):
+        
+        # parse the structured file name
+        fn_fields = os.path.basename(filename).rstrip().split(".")
+        assert(len(fn_fields) == 8)
+        assert(fn_fields[0] == "methyltrain")
+        assert(fn_fields[-1] == "summary")
+
+        self.sample = fn_fields[1]
+        self.treatment = fn_fields[2]
+        self.lab = fn_fields[3]
+        self.date = fn_fields[4]
+        self.alphabet = fn_fields[5]
+        self.short_alphabet = self.alphabet.split("_")[1]
+
+        # read kmers
+        fh = open(filename)
+        self.models = dict()
+        reader = csv.DictReader(fh, delimiter="\t")
+        
+        for record in reader:
+            s = SummaryRecord(record["model_short_name"],
+                              record["kmer"],
+                              int(record["was_trained"]),
+                              int(record["num_events_for_training"]),
+                              float(record["trained_level_mean"]),
+                              float(record["trained_level_stdv"]))
+
+            if s.model not in self.models:
+                self.models[s.model] = dict()
+            self.models[s.model][s.kmer] = s
+
+    def get_num_kmers(self, model_name):
+        return len(self.models[model_name])
