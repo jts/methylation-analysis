@@ -445,9 +445,9 @@ add_bases <- function(strings, alphabet) {
 make_mers <- function(n, alphabet) {
     l = c("")
     if(n == 0) {
-        return(l)   
+        return(l)
     }
-    
+
     for(i in 1:n) {
         l = add_bases(l, alphabet)
     }

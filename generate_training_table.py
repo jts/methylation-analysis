@@ -10,9 +10,9 @@ import argparse
 # define datatypes
 KmerModel = namedtuple('KmerModel', ['kmer', 'level_mean', 'level_stdv', 'sd_mean', 'sd_stdv'])
 SummaryRecord = namedtuple('KmerModel', ['model', 'kmer', 'was_trained', 'num_training_events', 'trained_level_mean', 'trained_level_stdv'])
-TableRow = namedtuple('TableRow', ['sample', 'treatment', 'lab', 'date', 
-                                   'model', 'alphabet', 'total_events', 
-                                   'total_kmers', 'trained_kmers', 
+TableRow = namedtuple('TableRow', ['sample', 'treatment', 'lab', 'date',
+                                   'model', 'alphabet', 'total_events',
+                                   'total_kmers', 'trained_kmers',
                                    'd0_1', 'd0_5', 'd1_0', 'd2_0'])
 
 def read_model(fn):
@@ -41,9 +41,9 @@ def read_summary(fn):
     fh = open(fn)
     reader = csv.DictReader(fh, delimiter="\t")
     for record in reader:
-        s = SummaryRecord(record["model_short_name"], 
-                          record["kmer"], 
-                          int(record["was_trained"]), 
+        s = SummaryRecord(record["model_short_name"],
+                          record["kmer"],
+                          int(record["was_trained"]),
                           int(record["num_events_for_training"]),
                           float(record["trained_level_mean"]),
                           float(record["trained_level_stdv"]))
@@ -86,7 +86,7 @@ def print_table_latex(table, treatment, alphabet):
     # Print a header
     header_fields = ["model", "sample", "run", "training events", "trained kmers"]
     header_fields += [str(x) for x in diff_cuts]
-    
+
     table_spec_fields = "c" * len(header_fields)
     table_spec_str = "|" + "|".join(table_spec_fields) + "|"
 
@@ -126,11 +126,11 @@ def print_table_latex(table, treatment, alphabet):
             out = [ model_out,
                     display_sample_name(row.sample) + " (" + display_treatment(row.treatment) + ")",
                     row.lab + " " + row.date,
-                    display_number(row.total_events), 
-                    row.trained_kmers, 
-                    row.d0_1, 
-                    row.d0_5, 
-                    row.d1_0, 
+                    display_number(row.total_events),
+                    row.trained_kmers,
+                    row.d0_1,
+                    row.d0_5,
+                    row.d1_0,
                     row.d2_0]
             print " & ".join([str(x) for x in out]) + r'\\'
         print r'\hline'
@@ -199,11 +199,10 @@ for summary_file in files:
                 if diff >= c:
                     diff_cut_count[i] += 1
 
-        
         result = [sample, treatment, lab, date, model_short_name, short_alphabet, total_events, total_kmers, total_trained]
         result += diff_cut_count
         table_rows.append(TableRow(*result))
 
         #print "\t".join([str(x) for x in out])
- 
+
 print_table_latex(table_rows, args.treatment, args.alphabet)

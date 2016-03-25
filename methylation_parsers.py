@@ -38,11 +38,10 @@ class MethyltestRecord:
         else:
             return 0
 
-    # the posterior probability that all sites in this island
-    # are methylated 
+    # the posterior probability that all sites in this island are methylated
     def posterior_methylated(self):
         return float(1 / (1 + math.exp(-self.loglik_ratio)))
-    
+
     # the expected number of methylated sites calculated from the posterior
     def posterior_num_methylated_sites(self):
         return self.num_cpgs * self.posterior_methylated()

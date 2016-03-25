@@ -227,7 +227,7 @@ $(HUMAN_REFERENCE):
 %.fasta: %.pass.fasta %.fail.fasta
 	cat $^ > $@
 
-# all human runs 
+# all human runs
 $(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
                                      NA12878.native.simpson.101515.fasta \
                                      NA12878.native.simpson.103015.fasta
@@ -286,7 +286,7 @@ c.p2.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_complement_median68p
 %.fofn: t.006.%.model c.p1.006.%.model c.p2.006.%.model
 	echo $^ | tr " " "\n" > $@
 
-# this code generates a training rule for a data set/alphabet pair 
+# this code generates a training rule for a data set/alphabet pair
 define generate-training-rules
 
 $(eval DATASET=$(basename $1))
@@ -427,6 +427,7 @@ results/all.training.tables.tex: results/pcr.nucleotide.training.table.tex \
                                  results/pcr.cpg.training.table.tex \
                                  results/pcr_MSssI.cpg.training.table.tex
 	cat $^ > $@
+
 ##################################################
 #
 # Step 4. Human genome analysis
