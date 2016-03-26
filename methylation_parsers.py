@@ -1,15 +1,8 @@
 import math
 import os
 import csv
+import methylation_utils
 from collections import namedtuple
-
-#
-# Utility functions
-#
-
-# Split a string formated like key1=a;key2=b into a dictionary
-def str2dict(s):
-    return dict( (k, v) for k, v in (pair.split("=") for pair in s.split(";")) )
 
 #
 # Parse a record from a methyltest.sites.bed file
@@ -148,3 +141,7 @@ class TrainingSummary:
 
     def get_num_kmers(self, model_name):
         return len(self.models[model_name])
+
+    def get_ont_model_name(self, model_short_name):
+        return model_short_name + ".ont." + self.alphabet + ".model"
+

@@ -227,6 +227,23 @@ make_emissions_figure <- function(outfile,
 }
 
 #
+# Make a plot of the k-mer mean differences by position of the methylated base
+#
+make_mean_shift_by_position_figure <- function(outfile, filename) {
+    data <- read.table(filename, header=T)
+    data$model = factor(data$model, levels = c("template", "comp.pop1", "comp.pop2"))
+
+    pdf(outfile)
+    p <- ggplot(data, aes(difference)) + 
+             geom_histogram(binwidth=0.25) + 
+             facet_grid(m_pattern ~ model, scales="free_y") + 
+             xlim(-4, 4) + 
+             global_theme();
+    multiplot(p, cols=1)
+    dev.off()
+}
+
+#
 # Human analysis plots
 #
 read_ont_scores_file <- function(filename) { 
@@ -470,8 +487,8 @@ if(! interactive()) {
         make_training_plots(args[2], args[3])
     } else if(command == "make_emissions_figure") {
         make_emissions_figure(args[2], args[3], args[4], args[5], args[6], args[7])
-    } else if(command == "strand_classification_plot") {
-        strand_classification_plot(args[2], args[3], args[4])
+    } else if(command == "make_mean_shift_by_position_figure") {
+        make_mean_shift_by_position_figure(args[2], args[3])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
     } else if(command == "TSS_distance_plot") {
@@ -489,8 +506,5 @@ if(! interactive()) {
     } else if(command == "site_likelihood_distribution") {
         outfile = args[length(args)]
         site_likelihood_distribution(outfile, as.vector(args[c(-1, -length(args))]))
-    } else if(command == "global_methylation") {
-        outfile = args[length(args)]
-        global_methylation_plot(outfile, as.vector(args[c(-1, -length(args))]))
     }
 }

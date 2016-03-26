@@ -362,7 +362,7 @@ $(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
 # 3c. Make training plots
 #
 
-# Figure 1, three panels showing baseline, strong methylation signal, weak/no methylation signal
+# Emissions figure, three panels showing baseline, strong methylation signal, weak/no methylation signal
 PANEL_A_SET=ecoli_er2925.pcr.timp.021216.alphabet_nucleotide
 PANEL_BC_SET1=ecoli_er2925.pcr.timp.021216.alphabet_cpg
 PANEL_BC_SET2=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg
@@ -371,11 +371,11 @@ PANEL_A_KMER="AGGTAG"
 PANEL_B_KMER="AGGTMG"
 PANEL_C_KMER="TMGAGT"
 
-results/figure1_emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
-                               methyltrain.$(PANEL_BC_SET1).panelB.tsv \
-                               methyltrain.$(PANEL_BC_SET2).panelB.tsv \
-                               methyltrain.$(PANEL_BC_SET1).panelC.tsv \
-                               methyltrain.$(PANEL_BC_SET2).panelC.tsv
+results/figure_emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
+                              methyltrain.$(PANEL_BC_SET1).panelB.tsv \
+                              methyltrain.$(PANEL_BC_SET2).panelB.tsv \
+                              methyltrain.$(PANEL_BC_SET1).panelC.tsv \
+                              methyltrain.$(PANEL_BC_SET2).panelC.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R make_emissions_figure $@ $^
 
 %.panelA.tsv: %.model.round4.events.tsv
@@ -386,6 +386,13 @@ results/figure1_emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
 
 %.panelC.tsv: %.model.round4.events.tsv
 	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_C_KMER))' > $@
+
+# Mean-shift by position figure
+%.alphabet_cpg.model.summary.delta: %.alphabet_cpg.model.summary
+	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/generate_kmer_deltas.py --summary $^ --ont-fofn ont.alphabet_cpg.fofn > $@
+
+results/figure_shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.model.summary.delta
+	Rscript $(SCRIPT_DIR)/methylation_plots.R make_mean_shift_by_position_figure $@ $^
 
 #
 # 3d. Make training tables from the summary files

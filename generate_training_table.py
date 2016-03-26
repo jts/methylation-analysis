@@ -6,8 +6,8 @@ import csv
 import os
 import math
 import argparse
-from methylation_parsers import ONTModel
-from methylation_parsers import TrainingSummary
+from methylation_utils import *
+from methylation_parsers import ONTModel, TrainingSummary
 
 # define datatypes
 TableRow = namedtuple('TableRow', ['sample', 'treatment', 'lab', 'date',
@@ -20,27 +20,6 @@ def load_ont_models_from_fofn(ont_fofn, out_model_set):
     for filename in f:
         filename = filename.rstrip()
         out_model_set[filename] = ONTModel(filename)
-
-def display_sample_name(s):
-    fields = s.split("_")
-    assert(fields[0] == "ecoli")
-    return "\\emph{E. coli}" + " " + fields[1].upper()
-
-def display_model(s):
-    model_dict = {'t.006':'template', 'c.p1.006':'comp.pop1', 'c.p2.006':'comp.pop2'}
-    return model_dict[s]
-
-# From: http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
-def display_number(n):
-    suffix= ['','K','M','B' ]
-    n = float(n)
-    millidx = max(0,min(len(suffix)-1,
-                    int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
-
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), suffix[millidx])
-
-def display_treatment(s):
-    return s.replace("_", "+").replace("MSssI", "M.SssI").replace("pcr", "PCR")
 
 def print_table_latex(table, treatment, alphabet):
 
@@ -126,7 +105,7 @@ for summary_file in files:
     summary = TrainingSummary(summary_file)
 
     for model_short_name in summary.models:
-        ont_model_name = model_short_name + ".ont." + summary.alphabet + ".model"
+        ont_model_name = summary.get_ont_model_name(model_short_name)
 
         # Sanity check that the number of kmers is correct
         assert(ont_models[ont_model_name].get_num_kmers() == summary.get_num_kmers(model_short_name))
