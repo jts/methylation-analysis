@@ -87,7 +87,7 @@ all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
 
 all-training-plots: results/figure.emissions.pdf results/figure.shift_by_position.pdf
 
-all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf results/figure.site_likelihood_distribution.pdf
+all-accuracy-plots: results/accuracy_roc.pdf results/figure.accuracy_by_threshold.pdf results/accuracy_by_kmer.pdf results/figure.site_likelihood_distribution.pdf
 
 all-TSS-plots: methylation_by_TSS_distance.pdf methylation_by_TSS_distance_by_chromosome.pdf 
 
@@ -548,12 +548,12 @@ accuracy.by_kmer.tsv: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed
 	python $(SCRIPT_DIR)/calculate_call_accuracy.py --unmethylated NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
                                                     --methylated NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
 
-accuracy.roc.pdf: accuracy.precision_recall.tsv
+results/accuracy_roc.pdf: accuracy.precision_recall.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_roc $^ $@
 
-accuracy.by_threshold.pdf: accuracy.by_threshold.tsv
+results/figure.accuracy_by_threshold.pdf: accuracy.by_threshold.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_threshold $^ $@
 
-accuracy.by_kmer.pdf: accuracy.by_kmer.tsv
+results/accuracy_by_kmer.pdf: accuracy.by_kmer.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_kmer $^ $@
 
