@@ -258,20 +258,21 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     require(ggplot2)
     require(stringr)
 
-    ont <- read_ont_scores_file(nanopore_file)
+    # Load and remove zero-depth sites
+    ont <- subset(read_ont_scores_file(nanopore_file), called_sites > 0)
     ont$ont_percent_methylated = 100 * (ont$called_sites_methylated / ont$called_sites)
 
-    bisulfite <- read_bisulfite_scores_file(bisulfite_file)
+    bisulfite <- subset(read_bisulfite_scores_file(bisulfite_file), called_sites > 0)
     bisulfite$bisulfite_percent_methylated = 100 * (bisulfite$called_sites_methylated / bisulfite$called_sites)
     
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$in_promoter = merged$feature.x == "promoter"
-    ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, color=in_promoter)) + 
+    ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, colour=in_promoter)) + 
         geom_point() +
-        xlab("ENCODE NA12878 percent methylated (bisulfite)") +
-        ylab("Nanopore estimated percent methylated") +
-        ggtitle("Methylation signal at CpG Islands") + 
+        xlab("Percent methylated (bisulfite)") +
+        ylab("Percent methylated (nanopore)") +
+        scale_colour_discrete(name="Is CGI in a promoter?") +
         global_theme()
 
    ggsave(out_file, width=10,height=10, useDingbats = FALSE)
@@ -341,8 +342,8 @@ TSS_distance_plot <- function(out_file, ...) {
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
-            ylab("Fraction Methylated") + 
-            ylim(0, 1) +
+            ylab("Percent methylated") + 
+            ylim(0, 100) +
             global_theme()
     multiplot(p, cols=1)
     dev.off()
@@ -361,8 +362,8 @@ TSS_distance_plot_by_chromosome <- function(out_file, ...) {
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
-            ylab("Fraction Methylated") + 
-            ylim(0, 1) +
+            ylab("Percent methylated") + 
+            ylim(0, 100) +
             facet_grid(chromosome ~ .) +
             theme_bw()
     multiplot(p, cols=1)

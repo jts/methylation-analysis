@@ -92,6 +92,7 @@ print "\t".join(["chromosome", "distance", "sites", "sites_methylated", "percent
 
 for chrom in total_sites:
     for i in range(0, len(distance_cuts) - 1):
-        p = float(methylated_sites[chrom][i]) / total_sites[chrom][i] if total_sites[chrom][i] > 0 else 0
+        f = float(methylated_sites[chrom][i]) / total_sites[chrom][i] if total_sites[chrom][i] > 0 else 0
+        p = f * 100
         print "%s\t%d\t%d\t%d\t%.3lf" % (chrom, distance_cuts[i], total_sites[chrom][i], methylated_sites[chrom][i], p)
 

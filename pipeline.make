@@ -78,12 +78,12 @@ all-cpg: ecoli_er2925.pcr.timp.113015.alphabet_cpg.fofn \
          ecoli_er2925.pcr.timp.021216.alphabet_cpg.fofn \
          ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
 
-all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
-                  NA12878.native.simpson.101515.cpg_island_plot.pdf \
-                  NA12878.native.simpson.103015.cpg_island_plot.pdf \
-                  NA12878.native.merged.cpg_island_plot.pdf \
-                  NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
-                  NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
+all-island-plots: results/NA12878.native.timp.093015.cpg_island_plot.pdf \
+                  results/NA12878.native.simpson.101515.cpg_island_plot.pdf \
+                  results/NA12878.native.simpson.103015.cpg_island_plot.pdf \
+                  results/NA12878.native.merged.cpg_island_plot.pdf \
+                  results/NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
+                  results/NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 
 all-training-plots: results/figure.emissions.pdf results/figure.shift_by_position.pdf
 
@@ -490,7 +490,8 @@ NA12878.bisulfite_score.cpg_islands: $(CGI_PROMOTER_BED) $(BISULFITE_BED) bedtoo
                                         -a $*.sorted.bam.methyltest.sites.bed | \
         python $(SCRIPT_DIR)/calculate_methylation_at_cpg_islands.py -t ont -c $(CALL_THRESHOLD) > $@
 
-%.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
+results/%.cpg_island_plot.pdf: NA12878.bisulfite_score.cpg_islands %.ont_score.cpg_islands
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R human_cpg_island_plot $^ $@
 
 #
