@@ -89,7 +89,7 @@ all-training-plots: results/figure.emissions.pdf results/figure.shift_by_positio
 
 all-accuracy-plots: results/accuracy_roc.pdf results/figure.accuracy_by_threshold.pdf results/accuracy_by_kmer.pdf results/figure.site_likelihood_distribution.pdf
 
-all-TSS-plots: methylation_by_TSS_distance.pdf methylation_by_TSS_distance_by_chromosome.pdf 
+all-TSS-plots: results/figure.methylation_by_TSS_distance.pdf results/figure.methylation_by_TSS_distance_by_chromosome.pdf 
 
 all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots
 
@@ -517,15 +517,17 @@ NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_F
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
 
 
-methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
-                                 NA12878.native.merged.methylated_sites.distance_to_TSS.table \
-                                 NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
-                                 NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
+results/figure.methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
+                                                NA12878.native.merged.methylated_sites.distance_to_TSS.table \
+                                                NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
+                                                NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
 
 
-methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
-                                               NA12878.native.merged.methylated_sites.distance_to_TSS.table
+results/figure.methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
+                                                              NA12878.native.merged.methylated_sites.distance_to_TSS.table
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot_by_chromosome $^ $@
 
 
@@ -549,11 +551,13 @@ accuracy.by_kmer.tsv: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed
                                                     --methylated NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
 
 results/accuracy_roc.pdf: accuracy.precision_recall.tsv
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_roc $^ $@
 
 results/figure.accuracy_by_threshold.pdf: accuracy.by_threshold.tsv
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_threshold $^ $@
 
 results/accuracy_by_kmer.pdf: accuracy.by_kmer.tsv
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_kmer $^ $@
-

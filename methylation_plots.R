@@ -341,7 +341,7 @@ TSS_distance_plot <- function(out_file, ...) {
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
-            ylab("Percent Methylated") + 
+            ylab("Fraction Methylated") + 
             ylim(0, 1) +
             global_theme()
     multiplot(p, cols=1)
@@ -361,7 +361,7 @@ TSS_distance_plot_by_chromosome <- function(out_file, ...) {
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 
-            ylab("Percent Methylated") + 
+            ylab("Fraction Methylated") + 
             ylim(0, 1) +
             facet_grid(chromosome ~ .) +
             theme_bw()
