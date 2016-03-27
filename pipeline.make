@@ -60,7 +60,7 @@ PORETOOLS=poretools
 # Output targets
 #
 .DEFAULT_GOAL := all
-all: all-nucleotide all-cpg
+all: all-nucleotide all-cpg all-results-plots
 
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
 
@@ -85,11 +85,13 @@ all-island-plots: NA12878.native.timp.093015.cpg_island_plot.pdf \
                   NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
                   NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
 
-all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf site.likelihood.distribution.pdf
+all-training-plots: results/figure.emissions.pdf results/figure.shift_by_position.pdf
+
+all-accuracy-plots: accuracy.roc.pdf accuracy.by_threshold.pdf accuracy.by_kmer.pdf results/figure.site_likelihood_distribution.pdf
 
 all-TSS-plots: methylation_by_TSS_distance.pdf methylation_by_TSS_distance_by_chromosome.pdf 
 
-all-plots: all-accuracy-plots all-island-plots all-TSS-plots
+all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots
 
 ##################################################
 #
@@ -371,7 +373,7 @@ PANEL_A_KMER="AGGTAG"
 PANEL_B_KMER="AGGTMG"
 PANEL_C_KMER="TMGAGT"
 
-results/figure_emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
+results/figure.emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
                               methyltrain.$(PANEL_BC_SET1).panelB.tsv \
                               methyltrain.$(PANEL_BC_SET2).panelB.tsv \
                               methyltrain.$(PANEL_BC_SET1).panelC.tsv \
@@ -391,7 +393,7 @@ results/figure_emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
 %.alphabet_cpg.model.summary.delta: %.alphabet_cpg.model.summary
 	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/generate_kmer_deltas.py --summary $^ --ont-fofn ont.alphabet_cpg.fofn > $@
 
-results/figure_shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.model.summary.delta
+results/figure.shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.model.summary.delta
 	Rscript $(SCRIPT_DIR)/methylation_plots.R make_mean_shift_by_position_figure $@ $^
 
 #
@@ -530,9 +532,10 @@ methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS
 #
 # Site likelihood plot
 #
-site.likelihood.distribution.pdf: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.tsv \
+results/figure.site_likelihood_distribution.pdf: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.tsv \
                      NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.tsv \
                      NA12878.native.merged.sorted.bam.methyltest.sites.tsv
+	mkdir -p results/
 	Rscript $(SCRIPT_DIR)/methylation_plots.R site_likelihood_distribution $^ $@
 
 #

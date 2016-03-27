@@ -287,6 +287,13 @@ make_display_name <- function(structured_name) {
     sample = fields[1]
     treatment = fields[2]
 
+    # Rename treatment
+    if(treatment == "pcr_MSssI") {
+        treatment = "PCR+M.SssI"
+    } else if(treatment == "pcr") {
+        treatment = "PCR"
+    }
+
     id = str_c(sample, treatment, sep=" ")
 
     if(treatment == "bisulfite") {
@@ -370,8 +377,8 @@ call_accuracy_by_threshold <- function(in_file, out_file) {
     data <- read.table(in_file, header=T)
     
     pdf(out_file, 12, 6)
-    p1 <- ggplot(data, aes(threshold, 1 - accuracy)) + geom_line() + xlim(0, 10) + xlab("Log-Likelihood ratio threshold") + ylab("Error rate") + global_theme()
-    p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log-Likelihood ratio threshold") + ylab("Number of calls") + global_theme()
+    p1 <- ggplot(data, aes(threshold, 1 - accuracy)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
+    p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
     multiplot(p1, p2, cols=2); 
     dev.off()
 }
@@ -426,7 +433,8 @@ site_likelihood_distribution <- function(out_file, ...) {
         facet_grid(dataset ~ .) + 
         geom_histogram(binwidth=0.5, aes(y=(..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..])) +
         xlim(-15, 15) +
-        ylab("Proportion") +
+        xlab("Log likelihood ratio") +
+        ylab("Density") +
         global_theme() 
 
     multiplot(p1, cols=1); 

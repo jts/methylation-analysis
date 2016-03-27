@@ -3,6 +3,7 @@ import os
 import csv
 import methylation_utils
 from collections import namedtuple
+from methylation_utils import *
 
 #
 # Parse a record from a methyltest.sites.bed file
