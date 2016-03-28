@@ -275,7 +275,13 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
         scale_colour_discrete(name="Is CGI in a promoter?") +
         global_theme()
 
-   ggsave(out_file, width=10,height=10, useDingbats = FALSE)
+    ggsave(out_file, width=10,height=10, useDingbats = FALSE)
+
+    # Write the correlation to a file
+    cor_str <- paste("Correlation", cor(merged$bisulfite_percent_methylated, merged$ont_percent_methylated))
+    fp <- file(paste(out_file, "correlation", sep="."))
+    writeLines(cor_str, fp)
+    close(fp)
 }
 
 #
