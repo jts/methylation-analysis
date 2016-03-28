@@ -36,7 +36,9 @@ bwa.version:
 # Install python libs
 pythonlibs.version:
 	pip install biopython >> $@
-	git clone https://github.com/arq5x/poretools.git
+	pip install Cython >> $@
+	pip install numpy >> $@
+	-git clone https://github.com/arq5x/poretools.git
 	pip install -r poretools/requirements.txt
 	cd poretools && python setup.py install
 	pip freeze >> $@
@@ -57,12 +59,20 @@ nanopolish.version:
 PORETOOLS=poretools
 
 #
+# Resources, references, etc
+#
+HUMAN_REFERENCE=GRCh38.primary_assembly.genome.fa
+ECOLI_REFERENCE=ecoli_k12.fasta
+BISULFITE_BED=ENCFF279HCL.bed
+
+#
 # Output targets
 #
 .DEFAULT_GOAL := all
 all: all-nucleotide all-cpg all-results-plots
 
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
+all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE)
 
 all-nucleotide: ecoli_er2925.native.timp.102615.alphabet_nucleotide.fofn \
                 ecoli_er2925.native.timp.110915.alphabet_nucleotide.fofn \
@@ -91,7 +101,7 @@ all-accuracy-plots: results/accuracy_roc.pdf results/figure.accuracy_by_threshol
 
 all-TSS-plots: results/figure.methylation_by_TSS_distance.pdf results/figure.methylation_by_TSS_distance_by_chromosome.pdf 
 
-all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots
+all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots results/all.training.tables.tex
 
 ##################################################
 #
@@ -129,7 +139,6 @@ HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
 # For each data set that we use, define a variable containing its reference
 
 # E.coli
-ECOLI_REFERENCE=ecoli_k12.fasta
 $(ECOLI_K12_NATIVE_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
@@ -143,7 +152,6 @@ $(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
 # Human
-HUMAN_REFERENCE=GRCh38.primary_assembly.genome.fa
 $(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
@@ -311,8 +319,8 @@ $(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai
 t.006.$(PREFIX).model: $(PREFIX).fofn
 c.p1.006.$(PREFIX).model: $(PREFIX).fofn
 c.p2.006.$(PREFIX).model: $(PREFIX).fofn
-$(DATASET).sorted.bam.methyltrain.tsv: $(PREFIX).fofn
 methyltrain.$(PREFIX).model.summary: $(PREFIX).fofn
+methyltrain.$(PREFIX).model.round4.events.tsv: $(PREFIX).fofn
 
 endef
 
@@ -459,7 +467,6 @@ results/all.training.tables.tex: results/pcr.nucleotide.training.table.tex \
 	cat $< | python $(SCRIPT_DIR)/annotated_bed_to_tsv.py > $@
 
 # Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
-BISULFITE_BED=ENCFF279HCL.bed
 $(BISULFITE_BED):
 	wget https://www.encodeproject.org/files/ENCFF279HCL/@@download/$(BISULFITE_BED).gz
 	gunzip $(BISULFITE_BED).gz

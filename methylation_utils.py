@@ -1,4 +1,5 @@
 # Utility functions
+import math
 
 # Split a string formated like key1=a;key2=b into a dictionary
 def str2dict(s):
