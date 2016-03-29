@@ -172,6 +172,9 @@ TRAINED_MODEL_FOFN=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
 # The log-likelihood threshold required to make a call
 CALL_THRESHOLD=2.5
 
+# The minimum mapping quality to use a read
+MIN_MAPQ=1
+
 #
 # Download data
 #
@@ -261,7 +264,7 @@ $(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
 .SECONDEXPANSION:
 %.sorted.bam: %.fasta $$(%.fasta_REFERENCE) $$(%.fasta_REFERENCE).bwt bwa.version samtools.version
 	bwa/bwa mem -t $(THREADS) -x ont2d $($*.fasta_REFERENCE) $< |\
-        samtools/samtools view -Sb - |\
+        samtools/samtools view -q $(MIN_MAPQ) -Sb - |\
         samtools/samtools sort -f - $@
 
 %.bam.bai: %.bam
