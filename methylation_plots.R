@@ -344,7 +344,7 @@ TSS_distance_plot <- function(out_file, ...) {
     all_data = load_all_TSS_data(...)   
 
     pdf(out_file, 12, 4)
-    p <- ggplot(subset(all_data, chromosome == "all"), aes(distance, percent_methylated, group=dataset, color=dataset)) + 
+    p <- ggplot(subset(all_data, chromosome == "autosomes"), aes(distance, percent_methylated, group=dataset, color=dataset)) +
             geom_point(size=1) + 
             geom_line(size=0.1) + 
             xlab("Binned distance to TSS") + 

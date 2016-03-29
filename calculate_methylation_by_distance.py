@@ -39,6 +39,7 @@ else:
 
 bin_width = 50
 distance_cuts = range(-3000, 3000, bin_width)
+autosome_names = dict([ ("chr" + str(i), 1) for i in range(1, 23)])
 
 total_sites = dict()
 methylated_sites = dict()
@@ -82,11 +83,14 @@ for line in in_file:
     match_strand = fields[-2]
     if match_strand != "+" and match_strand != "-":
         continue
+
     # the distance to the feature is the last field
     distance = int(fields[-1])
     
     update_stats(chrom, distance, num_covered_sites, num_methylated_sites)
     update_stats("all", distance, num_covered_sites, num_methylated_sites)
+    if chrom in autosome_names:
+        update_stats("autosomes", distance, num_covered_sites, num_methylated_sites)
 
 print "\t".join(["chromosome", "distance", "sites", "sites_methylated", "percent_methylated"])
 
