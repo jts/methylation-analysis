@@ -254,8 +254,17 @@ read_bisulfite_scores_file <- function(filename) {
     return(read.table(filename, header=T))
 }
 
+# from http://www.sthda.com/english/wiki/ggplot2-easy-way-to-mix-multiple-graphs-on-the-same-page-r-software-and-data-visualization
+get_legend<-function(myggplot){
+    tmp <- ggplot_gtable(ggplot_build(myggplot))
+    leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+    legend <- tmp$grobs[[leg]]
+    return(legend)
+}
+
 human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     require(ggplot2)
+    require(gridExtra)
     require(stringr)
 
     # Load and remove zero-depth sites
@@ -268,14 +277,36 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
     # merge the data sets together on the common Cpg island key
     merged <- merge(ont, bisulfite, by.x="key", by.y="key")
     merged$in_promoter = merged$feature.x == "promoter"
-    ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, colour=in_promoter)) + 
+    scatter <- ggplot(merged, aes(bisulfite_percent_methylated, ont_percent_methylated, colour=in_promoter)) + 
         geom_point() +
         xlab("Percent methylated (bisulfite)") +
         ylab("Percent methylated (nanopore)") +
-        scale_colour_discrete(name="Is CGI in a promoter?") +
-        global_theme()
+        scale_colour_discrete(name="Is CGI in a promoter?") + 
+        global_theme() + xlim(0,100) + ylim(0,100)
 
-    ggsave(out_file, width=10,height=10, useDingbats = FALSE)
+    legend <- get_legend(scatter)
+
+    scatter <- scatter + theme(legend.position="none")
+
+    hist_top <- ggplot(merged,aes(bisulfite_percent_methylated, fill=in_promoter)) +
+                geom_histogram(binwidth=1) + 
+                global_theme() + theme(legend.position="none") +
+                theme(axis.title.x = element_blank()) 
+
+    hist_right <- ggplot(merged, aes(ont_percent_methylated, fill=in_promoter)) + 
+                geom_histogram(binwidth=1,aes(fill=in_promoter)) + 
+                coord_flip() +
+                global_theme() + theme(legend.position="none") + theme(axis.title.y = element_blank()) 
+
+    empty <- ggplot()+geom_point(aes(1,1), colour="white")+
+         theme(axis.ticks=element_blank(), 
+               panel.background=element_blank(), 
+               axis.text.x=element_blank(), axis.text.y=element_blank(),           
+               axis.title.x=element_blank(), axis.title.y=element_blank())
+
+    pdf(out_file, width=10, height=10)
+    grid.arrange(hist_top, legend, scatter, hist_right, ncol=2, nrow=2, widths=c(4, 1), heights=c(1, 4))
+    dev.off()
 
     # Write the correlation to a file
     cor_str <- paste("Correlation", cor(merged$bisulfite_percent_methylated, merged$ont_percent_methylated))
