@@ -179,41 +179,6 @@ MIN_MAPQ=1
 # Download data
 #
 
-# In this Makefile we default to wget for portability.
-# It is highly recommended that you use aspera instead as the transfer will
-# go much faster. If you want to use aspera change this variable to the path
-# to a bash script that implements the aspera download. See download_from_aspera.sh
-# in this directory for an example that you will have to modify to use your key pair.
-
-#DOWNLOADER=/path/to/download_from_aspera.sh
-DOWNLOADER=wget
-
-# Download a tar file from the ENA
-$(DATA_ROOT)/%.tar:
-	cd $(DATA_ROOT)	&& $(DOWNLOADER) ftp://ftp.sra.ebi.ac.uk/vol1/ERA540/ERA540530/oxfordnanopore_native/$(@F)
-
-# untar it
-$(DATA_ROOT)/%: $(DATA_ROOT)/%.tar
-	cd $(DATA_ROOT) && tar -xf $*.tar
-
-all-ecoli-k12-data: $(DATA_ROOT)/ecoli_k12.native.loman.240915.fast5 \
-                    $(DATA_ROOT)/ecoli_k12.native.loman.280915.fast5 \
-                    $(DATA_ROOT)/ecoli_k12.pcr.loman.250915.fast5 \
-                    $(DATA_ROOT)/ecoli_k12.pcr.loman.280915.fast5
-
-# symlink to structured names
-$(DATA_ROOT)/ecoli_k12.native.loman.240915.fast5: $(DATA_ROOT)/MAP006-1
-	cd $(DATA_ROOT) && ln -s MAP006-1/MAP006-1_downloads $(@F)
-
-$(DATA_ROOT)/ecoli_k12.native.loman.280915.fast5: $(DATA_ROOT)/MAP006-2
-	cd $(DATA_ROOT) && ln -s MAP006-2/MAP006-2_downloads $(@F)
-
-$(DATA_ROOT)/ecoli_k12.pcr.loman.250915.fast5: $(DATA_ROOT)/MAP006-PCR-1
-	cd $(DATA_ROOT) && ln -s MAP006-PCR-1/MAP006-PCR_downloads $(@F)
-
-$(DATA_ROOT)/ecoli_k12.pcr.loman.280915.fast5: $(DATA_ROOT)/MAP006-PCR-2
-	cd $(DATA_ROOT) && ln -s MAP006-PCR-2/MAP006-PCR-2_downloads $(@F)
-
 # Reference genomes
 $(ECOLI_REFERENCE):
 	wget ftp://ftp.ensemblgenomes.org/pub/release-29/bacteria//fasta/bacteria_0_collection/escherichia_coli_str_k_12_substr_mg1655/dna/Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
