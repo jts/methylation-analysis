@@ -554,12 +554,13 @@ results/figure.site_likelihood_distribution.pdf: NA12878.pcr.simpson.021616.sort
 #
 # Accuracy results
 #
-accuracy.by_threshold.tsv \
-accuracy.precision_recall.tsv \
-accuracy.by_kmer.tsv: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
-                      NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
+accuracy.by_threshold.tsv: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
+                           NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
 	python $(SCRIPT_DIR)/calculate_call_accuracy.py --unmethylated NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
                                                     --methylated NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
+
+accuracy.precision_recall.tsv: accuracy.by_threshold.tsv
+accuracy.by_kmer.tsv: accuracy.by_threshold.tsv
 
 results/accuracy_roc.pdf: accuracy.precision_recall.tsv
 	mkdir -p results
