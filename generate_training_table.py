@@ -79,8 +79,7 @@ def print_table_latex(table, treatment, alphabet):
     print r'\end{adjustbox}'
 
     caption_str = "Model training results for %s-treated DNA over the %s alphabet.\n" % (display_treatment(treatment), alphabet)
-    caption_str += "The final four fields are the number of k-mers where the mean of the trained Gaussian differs from the ONT-trained mean by more than x pA"
-    caption_str += "\nTODO finalize."
+    caption_str += "The final four fields are the number of k-mers where the mean of the trained Gaussian differs from the ONT-trained mean by more than x pA."
     print r'\caption{' + caption_str + '}'
     print r'\end{table}'
 
