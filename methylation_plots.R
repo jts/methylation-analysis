@@ -416,7 +416,7 @@ call_accuracy_by_threshold <- function(in_file, out_file) {
     data <- read.table(in_file, header=T)
     
     pdf(out_file, 12, 6)
-    p1 <- ggplot(data, aes(threshold, 1 - accuracy)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
+    p1 <- ggplot(data, aes(threshold, 1 - accuracy)) + geom_line() + xlim(0, 10) + ylim(0, 0.20) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
     p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
     
     # Add panel labels
