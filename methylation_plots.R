@@ -330,6 +330,8 @@ make_display_name <- function(structured_name) {
         treatment = "PCR+M.SssI"
     } else if(treatment == "pcr") {
         treatment = "PCR"
+    } else if(treatment == "native") {
+        treatment = "natural"
     }
 
     id = str_c(sample, treatment, sep=" ")
