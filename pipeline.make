@@ -624,4 +624,4 @@ results/cn.region.plot.pdf: filt.regions.bed.gz \
 results/cn.strand.plot.pdf: filt.regions.bed.gz \
 	                    mcf10a.merged.sorted.bam.methyltest.phase.tsv \
                             mdamb231.merged.sorted.bam.methyltest.phase.tsv
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R plot_strand $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R strand_plot $^ $@
