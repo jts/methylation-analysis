@@ -2,8 +2,7 @@ library(bsseq)
 library(foreach)
 library(ggplot2)
 library(reshape2)
-
-#chroms=paste0("chr", c(1:22, "X", "Y", "M"))
+library(plyr)
 
 load_bed <- function(bedfile) {
 
@@ -36,7 +35,7 @@ load_strand <- function(pfiles) {
         
         dat.raw=read.delim(pfiles[i], header=T, stringsAsFactors=F)
         dat.raw$samp=samps[i]
-        dat.raw$uid=paste(dat.raw$samp, dat.raw$readix, sep=".")
+        dat.raw$uid=paste(dat.raw$samp, dat.raw$readix, sep=";")
 
         dat.raw
     }
@@ -51,6 +50,42 @@ strand.overlap <- function(dat.raw, this.reg) {
     return(dat.raw)
 }
 
+
+
+region.strand.filter <- function(tot.raw, reg, cthresh=5, regout="sorted.bed.gz") {
+    ##Filter based on at least this many nanopore reads in region
+
+    allsamps=unique(tot.raw$samp)
+
+    reg.reads=matrix(nrow=length(reg), ncol=length(allsamps))
+    
+    dat.read=ddply(tot.raw, .(uid), function(x) {data.frame(chr=x$chr[1], start=min(x$start), end=max(x$start), samp=x$samp[1])})
+
+    dat.gr=GRanges(seqnames=dat.read$chr, ranges=IRanges(start=dat.read$start, end=dat.read$end), uid=dat.read$uid, samp=dat.read$samp)
+
+    for (i in 1:length(allsamps)) {
+        samp.gr=dat.gr[dat.gr$samp==allsamps[i]]
+
+        reg.reads[,i]=countOverlaps(reg, samp.gr)
+    
+    }
+
+    idx=order(-rowSums(reg.reads))
+    idx=idx[(rowSums(reg.reads[idx,]>cthresh)==dim(reg.reads)[2])]
+
+    reg=reg[idx]
+
+    reg.bedout=data.frame(chr=seqnames(reg),
+                      start=start(reg)-1,
+                      end=end(reg),
+                      names=".",
+                      scores=".",
+                      strands=".")
+                      
+    write.table(reg.bedout, file=gzfile(regout), quote=F, sep="\t", row.names=F, col.names=F)
+
+    
+}
 
 
 region.sort.filter <- function(cytoreports, reg, cthresh=5, regout="sorted.bed.gz") {
@@ -81,18 +116,29 @@ corr.plot <- function(methobj, cthresh=5, plotname="corr.pdf") {
 
     ##Assuming two samples only in bsseq
     methobj=methobj[,1:2]
+
+    basecov=getCoverage(methobj, type="Cov", what="perBase")
     
     ##Looking for at least cthresh coverage in both samples
-    enough.cov=rowSums(getCoverage(methobj, type="Cov", what="perBase")>cthresh)>=2
+    enough.cov=rowSums(basecov>cthresh)>=2
 
     ##Get meth values for CGs that have sufficient coverage in both samples
     enough.meth=as.data.frame(getMeth(methobj[enough.cov,], type="raw", what="perBase"))
+
+    ##Get coverage of lesser (probably nanopore) data
+    enough.meth$mincov=apply(basecov[enough.cov,], 1, min)
+
+    ##Bin to 5, 10, 15
+    enough.meth$covcol=5
+    enough.meth$covcol[enough.meth$mincov>10]=10
+    enough.meth$covcol[enough.meth$mincov>15]=15
     
     ##Get correlation value
     corval=cor(enough.meth[,1], enough.meth[,2])
     
     pdf(plotname)
-    print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2]))+geom_point(alpha=.4)+theme_bw()+ggtitle(paste0("Correlation: ", format(corval, digits=2))))
+    print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2], color="covcol"))+geom_point(alpha=.4)+theme_bw()+
+          ggtitle(paste0("Correlation: ", format(corval, digits=2))))
     dev.off()
 
 }
@@ -149,21 +195,6 @@ plot.strand <- function(strand.loc, this.reg, called.only=T) {
 }
 
 
-##args=c("correlation", "/mithril/Data/NGS/Aligned/160405_rrbs/combined/MCF10A/MCF10A.cyto.txt.gz",
-#       "~/jared/methylation-run/mcf10a.merged.sorted.bam.methyltest.cyto.txt","~/Dropbox/Temp/try.pdf")
-
-##args=c("best_regions", "annotations/msifrags.bed.gz", "~/jared/methylation-run/mcf10a.merged.sorted.bam.methyltest.cyto.txt",
-#       "~/jared/methylation-run/mdamb231.merged.sorted.bam.methyltest.cyto.txt", "msei_filt.bed.gz")
-
-#args=c("meth_region_plot", "msei_filt.bed.gz", "~/jared/methylation-run/mcf10a.merged.sorted.bam.methyltest.cyto.txt",
-#       "/mithril/Data/NGS/Aligned/160405_rrbs/combined/MCF10A/MCF10A.cyto.txt.gz",
-#       "/mithril/Data/NGS/Aligned/160405_rrbs/combined/MDAMB231/MDAMB231.cyto.txt.gz", 
-#       "~/jared/methylation-run/mdamb231.merged.sorted.bam.methyltest.cyto.txt", "~/Dropbox/Temp/reg_try2.pdf")
-
-#args=c("strand_plot", "msei_filt.bed.gz", "~/jared/methylation-run/mcf10a.merged.sorted.bam.methyltest.phase.tsv",
-#       "~/jared/methylation-run/mdamb231.merged.sorted.bam.methyltest.phase.tsv", "~/Dropbox/Temp/strand_try2.pdf")
-
-
 
 args=commandArgs(TRUE)
 command=args[1]
@@ -179,9 +210,11 @@ if(! interactive()) {
 
         reg.gr=load_bed(args[2]) 
         
-        cytoreports=args[c(-1, -2, -length(args))]
-        methobj=load_bsseq(cytoreports)
-        region.sort.filter(cytoreports, reg.gr, cthresh=5, regout=args[length(args)])
+        pfiles=args[c(-1, -2, -length(args))]
+        
+        meth.strand=load_strand(pfiles)
+
+        region.strand.filter(meth.strand, reg.gr, cthresh=5, regout=args[length(args)])
         
     } else if(command == "meth_region_plot") {
 

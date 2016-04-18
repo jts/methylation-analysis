@@ -589,27 +589,39 @@ results/accuracy_by_kmer.pdf: accuracy.by_kmer.tsv
 # Cancer/Normal results
 #
 
+# D/l illumina bs data
+
+MCF10A.cyto.txt.gz: 
+	wget http://timplab.org/data/MCF10A.cyto.txt.gz
+
+MDAMB231.cyto.txt.gz:
+	wget http://timplab.org/data/MDAMB231.cyto.txt.gz
+
+
 # Correlation plot
 
-results/mcf10a.bsnanocorr.pdf: mcf10a.merged.sorted.bam.methyltest.cyto.txt
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation MCF10A.cyto.txt.gz $^ $@
+results/mcf10a.bsnanocorr.pdf: MCF10A.cyto.txt.gz mcf10a.merged.sorted.bam.methyltest.cyto.txt 
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation $^ $@
 
-results/mdamb231.bsnanocorr.pdf: mdamb231.merged.sorted.bam.methyltest.cyto.txt
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation MDAMB231.cyto.txt.gz $^ $@
+results/mdamb231.bsnanocorr.pdf: MDAMB231.cyto.txt.gz mdamb231.merged.sorted.bam.methyltest.cyto.txt
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation $^ $@
 
+# Region Plot
 
-filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.cyto.txt \
-                     mdamb231.merged.sorted.bam.methyltest.cyto.txt
+filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.phase.tsv \
+                     mdamb231.merged.sorted.bam.methyltest.phase.tsv
 	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions annotations/msifrags.bed.gz $^ $@
 
 results/cn.region.plot.pdf: filt.regions.bed.gz \
 	                    mcf10a.merged.sorted.bam.methyltest.cyto.txt \
-                            mdamb231.merged.sorted.bam.methyltest.cyto.txt 
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot $^ \
-		MCF10A.cyto.txt.gz MDAMB231.cyto.txt.gz $@
+                            mdamb231.merged.sorted.bam.methyltest.cyto.txt \
+                            MCF10A.cyto.txt.gz \
+                            MDAMB231.cyto.txt.gz
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot $^ $@
 
+# Strand plot
 
 results/cn.strand.plot.pdf: filt.regions.bed.gz \
-	                    mcf10a.merged.sorted.bam.methyltest.cyto.txt \
-                            mdamb231.merged.sorted.bam.methyltest.cyto.txt 
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot $^ $@
+	                    mcf10a.merged.sorted.bam.methyltest.phase.tsv \
+                            mdamb231.merged.sorted.bam.methyltest.phase.tsv
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R plot_strand $^ $@
