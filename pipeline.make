@@ -69,7 +69,7 @@ BISULFITE_BED=ENCFF279HCL.bed
 # Output targets
 #
 .DEFAULT_GOAL := all
-all: all-nucleotide all-cpg all-results-plots
+all: all-nucleotide all-cpg all-results-plots all-cancer-normal
 
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
 all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE)
@@ -102,6 +102,9 @@ all-accuracy-plots: results/accuracy_roc.pdf results/figure.accuracy_by_threshol
 all-TSS-plots: results/figure.methylation_by_TSS_distance.pdf results/figure.methylation_by_TSS_distance_by_chromosome.pdf 
 
 all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots results/all.training.tables.tex
+
+all-cancer-normal: results/mcf10a.bsnanocorr.pdf results/mdamb231.bsnanocorr.pdf results/cn.region.plot.pdf results/cn.strand.plot.pdf
+
 
 ##################################################
 #
@@ -136,6 +139,15 @@ HUMAN_NA12878_NATIVE_MERGED_DATA=NA12878.native.merged.fasta
 HUMAN_NA12878_PCR_DATA=NA12878.pcr.simpson.021616.fasta
 HUMAN_NA12878_PCR_MSSSI_DATA=NA12878.pcr_MSssI.simpson.021016.fasta
 
+# Cancer pair
+HUMAN_MCF10A_RR1_DATA=mcf10a.rr1.timp.031116.fasta
+HUMAN_MCF10A_RR2_DATA=mcf10a.rr2.timp.031116.fasta
+HUMAN_MCF10A_MERGED_DATA=mcf10a.merged.fasta
+
+HUMAN_MDAMB231_RR1_DATA=mdamb231.rr1.timp.031316.fasta
+HUMAN_MDAMB231_RR2_DATA=mdamb231.rr2.timp.031316.fasta
+HUMAN_MDAMB231_MERGED_DATA=mdamb231.merged.fasta
+
 # For each data set that we use, define a variable containing its reference
 
 # E.coli
@@ -159,6 +171,14 @@ $(HUMAN_NA12878_NATIVE_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_PCR_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 
+$(HUMAN_MCF10A_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MCF10A_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MCF10A_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+
+$(HUMAN_MDAMB231_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MDAMB231_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_MDAMB231_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+
 # Reference and region file used for model training
 TRAINING_REFERENCE=$(ECOLI_REFERENCE)
 TRAINING_REGION="Chromosome:50000-3250000"
@@ -173,7 +193,7 @@ TRAINED_MODEL_FOFN=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
 CALL_THRESHOLD=2.5
 
 # The minimum mapping quality to use a read
-MIN_MAPQ=1
+MIN_MAPQ=20
 
 #
 # Download data
@@ -210,6 +230,17 @@ $(HUMAN_NA12878_NATIVE_MERGED_DATA): NA12878.native.timp.093015.fasta \
                                      NA12878.native.simpson.101515.fasta \
                                      NA12878.native.simpson.103015.fasta
 	cat $^ > $@
+
+$(HUMAN_MCF10A_MERGED_DATA): mcf10a.rr1.timp.031116.fasta \
+                             mcf10a.rr2.timp.031116.fasta 
+	cat $^ > $@
+
+$(HUMAN_MDAMB231_MERGED_DATA): mdamb231.rr1.timp.031316.fasta \
+                               mdamb231.rr2.timp.031316.fasta 
+	cat $^ > $@
+
+
+
 
 ##################################################
 #
@@ -439,6 +470,15 @@ $(BISULFITE_BED):
 	wget https://www.encodeproject.org/files/ENCFF279HCL/@@download/$(BISULFITE_BED).gz
 	gunzip $(BISULFITE_BED).gz
 
+# Extract tsv for strand-based methylation plots
+%.methyltest.phase.tsv: %.methyltest.sites.bed
+	python phase_extract.py -c 2.5 -i $<
+
+# Summarize methylation per cg
+%.methyltest.cyto.txt: %.methyltest.phase.tsv
+	python per_cg_methylation.py -i $<
+
+
 #
 # CpG Island Methylation Results
 #
@@ -489,6 +529,11 @@ NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_F
 	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
                                        -a <(cat $(BISULFITE_BED) | bedtools/bin/bedtools sort) > $@
 
+# Calculate methylation as a function of distance for the bisulfite data
+%.bisulfite.distance_to_TSS.bed: %.bisulfite.bed bedtools.version $(TSS_FILE)
+	bedtools/bin/bedtools closest -D b -b <(zcat $(TSS_FILE) | bedtools/bin/bedtools sort)\
+                                       -a <(cat $< | bedtools/bin/bedtools sort) > $@
+
 %.bisulfite.distance_to_TSS.table: %.bisulfite.distance_to_TSS.bed
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
 
@@ -504,6 +549,7 @@ results/figure.methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TS
 results/figure.methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                                               NA12878.native.merged.methylated_sites.distance_to_TSS.table
 	mkdir -p results
+
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot_by_chromosome $^ $@
 
 
@@ -538,3 +584,44 @@ results/figure.accuracy_by_threshold.pdf: accuracy.by_threshold.tsv
 results/accuracy_by_kmer.pdf: accuracy.by_kmer.tsv
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_kmer $^ $@
+
+#
+# Cancer/Normal results
+#
+
+# D/l illumina bs data
+
+MCF10A.cyto.txt.gz: 
+	wget http://timplab.org/data/MCF10A.cyto.txt.gz
+
+MDAMB231.cyto.txt.gz:
+	wget http://timplab.org/data/MDAMB231.cyto.txt.gz
+
+
+# Correlation plot
+
+results/mcf10a.bsnanocorr.pdf: MCF10A.cyto.txt.gz mcf10a.merged.sorted.bam.methyltest.cyto.txt 
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation $^ $@
+
+results/mdamb231.bsnanocorr.pdf: MDAMB231.cyto.txt.gz mdamb231.merged.sorted.bam.methyltest.cyto.txt
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation $^ $@
+
+# Region Plot
+
+filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.cyto.txt \
+                     mdamb231.merged.sorted.bam.methyltest.cyto.txt
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions annotations/msifrags.bed.gz $^ $@
+
+results/cn.region.plot.pdf: filt.regions.bed.gz \
+	                    mcf10a.merged.sorted.bam.methyltest.cyto.txt \
+                            MCF10A.cyto.txt.gz \
+                            mdamb231.merged.sorted.bam.methyltest.cyto.txt \
+                            MDAMB231.cyto.txt.gz
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot 5 $^ $@
+
+# Strand plot
+
+results/cn.strand.plot.pdf: filt.regions.bed.gz \
+	                    mcf10a.merged.sorted.bam.methyltest.phase.tsv \
+                            mdamb231.merged.sorted.bam.methyltest.phase.tsv
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R strand_plot $^ $@
