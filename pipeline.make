@@ -608,16 +608,16 @@ results/mdamb231.bsnanocorr.pdf: MDAMB231.cyto.txt.gz mdamb231.merged.sorted.bam
 
 # Region Plot
 
-filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.phase.tsv \
-                     mdamb231.merged.sorted.bam.methyltest.phase.tsv
+filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.cyto.txt \
+                     mdamb231.merged.sorted.bam.methyltest.cyto.txt
 	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions annotations/msifrags.bed.gz $^ $@
 
 results/cn.region.plot.pdf: filt.regions.bed.gz \
 	                    mcf10a.merged.sorted.bam.methyltest.cyto.txt \
-                            mdamb231.merged.sorted.bam.methyltest.cyto.txt \
                             MCF10A.cyto.txt.gz \
+                            mdamb231.merged.sorted.bam.methyltest.cyto.txt \
                             MDAMB231.cyto.txt.gz
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot 5 $^ $@
 
 # Strand plot
 

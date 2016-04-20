@@ -51,52 +51,16 @@ strand.overlap <- function(dat.raw, this.reg) {
 }
 
 
-
-region.strand.filter <- function(tot.raw, reg, cthresh=5, regout="sorted.bed.gz") {
-    ##Filter based on at least this many nanopore reads in region
-
-    allsamps=unique(tot.raw$samp)
-
-    reg.reads=matrix(nrow=length(reg), ncol=length(allsamps))
-    
-    dat.read=ddply(tot.raw, .(uid), function(x) {data.frame(chr=x$chr[1], start=min(x$start), end=max(x$start), samp=x$samp[1])})
-
-    dat.gr=GRanges(seqnames=dat.read$chr, ranges=IRanges(start=dat.read$start, end=dat.read$end), uid=dat.read$uid, samp=dat.read$samp)
-
-    for (i in 1:length(allsamps)) {
-        samp.gr=dat.gr[dat.gr$samp==allsamps[i]]
-
-        reg.reads[,i]=countOverlaps(reg, samp.gr)
-    
-    }
-
-    idx=order(-rowSums(reg.reads))
-    idx=idx[(rowSums(reg.reads[idx,]>cthresh)==dim(reg.reads)[2])]
-
-    reg=reg[idx]
-
-    reg.bedout=data.frame(chr=seqnames(reg),
-                      start=start(reg)-1,
-                      end=end(reg),
-                      names=".",
-                      scores=".",
-                      strands=".")
-                      
-    write.table(reg.bedout, file=gzfile(regout), quote=F, sep="\t", row.names=F, col.names=F)
-
-    
-}
-
-
-region.sort.filter <- function(cytoreports, reg, cthresh=5, regout="sorted.bed.gz") {
+region.sort.filter <- function(cytoreports, reg, many=100, regout="sorted.bed.gz") {
     ##Sorting and filtering based on coverage
 
     samp.cov=getCoverage(methobj, regions=reg, type="Cov", what="perRegionAverage")
 
-    ##Sort on the first sample in order
+    ##Sort on total coverage order
     idx=order(-rowSums(samp.cov))
-    idx=idx[(rowSums(samp.cov[idx,]>cthresh)==dim(methobj)[2])]
+    #idx=idx[(rowSums(samp.cov[idx,]>cthresh)==dim(methobj)[2])]
     idx=idx[!is.na(idx)]
+    idx=idx[1:100]
 
     reg=reg[idx]
 
@@ -116,7 +80,7 @@ corr.plot <- function(methobj, cthresh=5, plotname="corr.pdf") {
 
     ##Assuming two samples only in bsseq
     methobj=methobj[,1:2]
-
+    
     basecov=getCoverage(methobj, type="Cov", what="perBase")
     
     ##Looking for at least cthresh coverage in both samples
@@ -129,16 +93,21 @@ corr.plot <- function(methobj, cthresh=5, plotname="corr.pdf") {
     enough.meth$mincov=apply(basecov[enough.cov,], 1, min)
 
     ##Bin to 5, 10, 15
-    enough.meth$covcol=5
-    enough.meth$covcol[enough.meth$mincov>10]=10
-    enough.meth$covcol[enough.meth$mincov>15]=15
+    enough.meth$covcol=cthresh
+    enough.meth$covcol[enough.meth$mincov>(cthresh+5)]=cthresh+5
+    enough.meth$covcol[enough.meth$mincov>(cthresh+10)]=cthresh+10
+    enough.meth$covcol=as.factor(enough.meth$covcol)
+
     
     ##Get correlation value
-    corval=cor(enough.meth[,1], enough.meth[,2])
+    corval=c(0,0,0)
+    corval[1]=cor(enough.meth[,1], enough.meth[,2])
+    corval[2]=cor(enough.meth[enough.meth$mincov>cthresh+5,1:2])
+    corval[3]=cor(enough.meth[enough.meth$mincov>cthresh+10,1:2])
     
     pdf(plotname)
     print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2], color="covcol"))+geom_point(alpha=.4)+theme_bw()+
-          ggtitle(paste0("Correlation: ", format(corval, digits=2))))
+          ggtitle(paste0("Correlation: ", cthresh,"X: ", format(corval[1], digits=2), " ", cthresh+5, "X: ", format(corval[2], digits=2), " ", cthresh+10, "X: ", format(corval[3], digits=2))))
     dev.off()
 
 }
@@ -153,7 +122,7 @@ filt.cgs <- function(methobj, cthresh=5) {
 
 
 
-plot.meth.reg <- function(methobj, this.reg) {
+plot.meth.reg <- function(methobj, this.reg, plotcov=F) {
     ##Plot data for region
     
     coord=granges(methobj)[overlapsAny(granges(methobj), this.reg)]
@@ -162,16 +131,21 @@ plot.meth.reg <- function(methobj, this.reg) {
     
     ##Check for empty region
     if (is.array(meth)) {
+        ##Coverage
         cov=getCoverage(methobj, regions=this.reg, type="Cov", what="perBase")[[1]]
-        
-        mel.meth=melt(meth, value.name="meth")
-        mel.cov=melt(cov, value.name="cov")
+
+        ##Methylation level
+        mel.meth=melt(as.data.frame(meth), value.name="meth", variable.name="sample")
+        mel.cov=melt(as.data.frame(cov), value.name="cov", variable.name="sample")
         mel.meth$coord=start(coord)
         mel.cov$coord=start(coord)
         
-        print(ggplot(mel.meth, aes(x=coord, y=meth, color=Var2))+geom_smooth(se=F)+geom_point(alpha=.4)+theme_bw()+labs(title=paste0(i, ": ", as.character(seqnames(this.reg[1])))))
+        print(ggplot(mel.meth, aes(x=coord, y=meth, color=sample))+geom_smooth(se=F)+geom_point(alpha=.4)+theme_bw()+labs(title=paste0(i, ": ", as.character(seqnames(this.reg[1]))))+
+              guides(col=guide_legend(label.position="bottom", nrow=2))+theme(legend.position="bottom"))
         
-        print(ggplot(mel.cov, aes(x=coord, y=cov, color=Var2))+geom_smooth(se=F)+geom_point(alpha=.4)+theme_bw()+labs(title=paste0(i, ": ", as.character(seqnames(this.reg[1])))))
+        if (plotcov) {
+            print(ggplot(mel.cov, aes(x=coord, y=cov, color=sample))+geom_smooth(se=F)+geom_point(alpha=.4)+theme_bw()+labs(title=paste0(i, ": ", as.character(seqnames(this.reg[1])))))
+        }
         
     }
 }
@@ -209,21 +183,20 @@ if(! interactive()) {
     } else if(command == "best_regions") {
 
         reg.gr=load_bed(args[2]) 
-        
-        pfiles=args[c(-1, -2, -length(args))]
-        
-        meth.strand=load_strand(pfiles)
-
-        region.strand.filter(meth.strand, reg.gr, cthresh=5, regout=args[length(args)])
-        
-    } else if(command == "meth_region_plot") {
-
-        reg.gr=load_bed(args[2])
 
         cytoreports=args[c(-1, -2, -length(args))]
         methobj=load_bsseq(cytoreports)
 
-        methobj=filt.cgs(methobj)
+        region.sort.filter(methobj, reg.gr, regout=args[length(args)])
+        
+    } else if(command == "meth_region_plot") {
+
+        reg.gr=load_bed(args[3])
+
+        cytoreports=args[c(-1, -2, -3, -length(args))]
+        methobj=load_bsseq(cytoreports)
+
+        methobj=filt.cgs(methobj, cthresh=as.numeric(args[2]))
         
         pdf(args[length(args)])
 
@@ -247,7 +220,7 @@ if(! interactive()) {
             ##Filter region
             strand.loc=strand.overlap(meth.strand, reg.gr[i])
             ##plot filtered
-            plot.strand(strand.loc, reg.gr[i], called.only=F)
+            plot.strand(strand.loc, reg.gr[i])
         }
 
         dev.off()
