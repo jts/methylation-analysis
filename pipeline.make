@@ -600,6 +600,7 @@ results/cn.region.plot.pdf: filt.regions.bed.gz \
                             MCF10A.cyto.txt.gz \
                             mdamb231.merged.sorted.bam.methyltest.cyto.txt \
                             MDAMB231.cyto.txt.gz
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot 5 $^ $@
 
 # Strand plot
@@ -607,4 +608,5 @@ results/cn.region.plot.pdf: filt.regions.bed.gz \
 results/cn.strand.plot.pdf: filt.regions.bed.gz \
 	                    mcf10a.merged.sorted.bam.methyltest.phase.tsv \
                             mdamb231.merged.sorted.bam.methyltest.phase.tsv
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_region_plot.R strand_plot $^ $@
