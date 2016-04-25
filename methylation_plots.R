@@ -172,7 +172,7 @@ make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
     # add gaussian fits
     idx <- 1
     for(n in names) {
-        p <- p + stat_function(fun = dnorm, colour=palette[[idx]], arg=list(mean=param_means[[n]], sd=param_stdvs[[n]]))
+        p <- p + stat_function(fun = dnorm, colour=palette[[idx]], args=list(mean=param_means[[n]], sd=param_stdvs[[n]]))
         idx <- idx + 1
     }
 
