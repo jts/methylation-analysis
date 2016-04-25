@@ -74,9 +74,7 @@ all: all-nucleotide all-cpg all-results-plots all-cancer-normal
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
 all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE)
 
-all-nucleotide: ecoli_er2925.native.timp.102615.alphabet_nucleotide.fofn \
-                ecoli_er2925.native.timp.110915.alphabet_nucleotide.fofn \
-                ecoli_er2925.pcr.timp.113015.alphabet_nucleotide.fofn \
+all-nucleotide: ecoli_er2925.pcr.timp.113015.alphabet_nucleotide.fofn \
                 ecoli_er2925.pcr_MSssI.timp.113015.alphabet_nucleotide.fofn  \
                 ecoli_k12.pcr.loman.250915.alphabet_nucleotide.fofn \
                 ecoli_er2925.pcr.timp.021216.alphabet_nucleotide.fofn \
@@ -457,11 +455,11 @@ $(BISULFITE_BED):
 
 # Extract tsv for strand-based methylation plots
 %.methyltest.phase.tsv: %.methyltest.sites.bed
-	python phase_extract.py -c 2.5 -i $<
+	python $(SCRIPT_DIR)/phase_extract.py -c 2.5 -i $<
 
 # Summarize methylation per cg
 %.methyltest.cyto.txt: %.methyltest.phase.tsv
-	python per_cg_methylation.py -i $<
+	python $(SCRIPT_DIR)/per_cg_methylation.py -i $<
 
 
 #
@@ -595,7 +593,7 @@ results/mdamb231.bsnanocorr.pdf: MDAMB231.cyto.txt.gz mdamb231.merged.sorted.bam
 
 filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.cyto.txt \
                      mdamb231.merged.sorted.bam.methyltest.cyto.txt
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions annotations/msifrags.bed.gz $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions $(SCRIPT_DIR)/annotations/msifrags.bed.gz $^ $@
 
 results/cn.region.plot.pdf: filt.regions.bed.gz \
 	                    mcf10a.merged.sorted.bam.methyltest.cyto.txt \
