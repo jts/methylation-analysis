@@ -117,7 +117,6 @@ DATA_ROOT=../data
 #
 # Define variables for each data set
 #
-ECOLI_K12_NATIVE_DATA=ecoli_k12.native.loman.run1.fasta
 ECOLI_K12_PCR_RUN1_DATA=ecoli_k12.pcr.loman.250915.fasta
 
 ECOLI_ER2925_NATIVE_RUN1_DATA=ecoli_er2925.native.timp.102615.fasta
@@ -151,7 +150,6 @@ HUMAN_MDAMB231_MERGED_DATA=mdamb231.merged.fasta
 # For each data set that we use, define a variable containing its reference
 
 # E.coli
-$(ECOLI_K12_NATIVE_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
 $(ECOLI_ER2925_NATIVE_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
@@ -336,7 +334,6 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	ln -s $< $@
 
 # make the rules using the generation function
-$(eval $(call generate-training-rules,$(ECOLI_K12_NATIVE_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN1_DATA),nucleotide))
 $(eval $(call generate-training-rules,$(ECOLI_ER2925_NATIVE_RUN2_DATA),nucleotide))
@@ -401,6 +398,7 @@ results/figure.emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
 	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/generate_kmer_deltas.py --summary $^ --ont-fofn ont.alphabet_cpg.fofn > $@
 
 results/figure.shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.model.summary.delta
+	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R make_mean_shift_by_position_figure $@ $^
 
 #
