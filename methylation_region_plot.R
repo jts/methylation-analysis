@@ -98,22 +98,29 @@ corr.plot <- function(methobj, cthresh=5, plotname="corr.pdf") {
     enough.meth$mincov=apply(basecov[enough.cov,], 1, min)
 
     ##Bin to threshold, threshold+5, threshold +10 (5, 10, 15)
-    plus5=enough.meth$mincov>(cthresh+5)
-    plus10=enough.meth$mincov>(cthresh+10)
+    plus0=enough.meth$mincov>=(cthresh)&enough.meth$mincov<(cthresh+5)
+    plus5=enough.meth$mincov>=(cthresh+5)&enough.meth$mincov<(cthresh+10)
+    plus10=enough.meth$mincov>=(cthresh+10)
     
     ##Get correlation value
-    corval=cor(enough.meth[,1], enough.meth[,2])
+    corval=c(cor(enough.meth[plus0,1], enough.meth[plus0,2]),
+             cor(enough.meth[plus5,1], enough.meth[plus5,2]),
+             cor(enough.meth[plus10,1], enough.meth[plus10,2]))
+                          
+    cov.levels=c(paste0(cthresh, "-", cthresh+5, ": R=",format(corval[1], digits=2)),
+                 paste0(cthresh+5, "-", cthresh+10, ": R=",format(corval[2], digits=2)),
+                 paste0(">", cthresh+10, "X", ": R=", format(corval[3], digits=2)))
 
-
-    ##Plot with different colors for coverage 
-    enough.meth$covcol=paste0(cthresh, "-", cthresh+5)
-    enough.meth$covcol[plus5]=paste0(cthresh+5, "-", cthresh+10)
-    enough.meth$covcol[plus10]=paste0(">", cthresh+10, "X")
-    #enough.meth$covcol=as.factor(enough.meth$covcol)
+    ##Plot with different colors and titles for coverage 
+    enough.meth$covcol=cov.levels[1]
+    enough.meth$covcol[plus5]=cov.levels[2]
+    enough.meth$covcol[plus10]=cov.levels[3]
+    enough.meth$covcol=factor(enough.meth$covcol, levels=cov.levels)
     
     pdf(plotname)
-    print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2], color="covcol"))+geom_point(alpha=.4)+theme_bw()+
-          ggtitle(paste0("Correlation: ", cthresh,"X: ", format(corval[1], digits=5)))+
+    print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2], color="covcol"))+geom_point(alpha=.4, show.legend=F)+theme_bw()+
+          ggtitle("Correlation: ")+
+          guides(col=guide_legend(title="Coverage range"))+
           facet_wrap(~covcol, nrow=2, ncol=2))
     dev.off()
 
