@@ -380,7 +380,7 @@ results/figure.emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
 
 # Mean-shift by position figure
 %.alphabet_cpg.model.summary.delta: %.alphabet_cpg.model.summary
-	python ~/simpsonlab/users/jsimpson/code/methylation-analysis/generate_kmer_deltas.py --summary $^ --ont-fofn ont.alphabet_cpg.fofn > $@
+	python $(SCRIPT_DIR)/generate_kmer_deltas.py --summary $^ --ont-fofn ont.alphabet_cpg.fofn > $@
 
 results/figure.shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.model.summary.delta
 	mkdir -p results
