@@ -455,7 +455,7 @@ $(BISULFITE_BED):
 
 # Extract tsv for strand-based methylation plots
 %.methyltest.phase.tsv: %.methyltest.sites.bed
-	python $(SCRIPT_DIR)/phase_extract.py -c 2.5 -i $<
+	python $(SCRIPT_DIR)/phase_extract.py -c  $(CALL_THRESHOLD) -i $<
 
 # Summarize methylation per cg
 %.methyltest.cyto.txt: %.methyltest.phase.tsv
@@ -591,21 +591,37 @@ results/mdamb231.bsnanocorr.pdf: MDAMB231.cyto.txt.gz mdamb231.merged.sorted.bam
 
 # Region Plot
 
-filt.regions.bed.gz: mcf10a.merged.sorted.bam.methyltest.cyto.txt \
-                     mdamb231.merged.sorted.bam.methyltest.cyto.txt
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions $(SCRIPT_DIR)/annotations/msifrags.bed.gz $^ $@
+# Thresholds for filtering regions to plot
+COV_THRESHOLD=5
+SIZE_MN_THRESHOLD=3000
+SIZE_MX_THRESHOLD=7000
 
-results/cn.region.plot.pdf: filt.regions.bed.gz \
+filt.isl.bed.gz: $(CGI_FILE) \
+                 MCF10A.cyto.txt.gz \
+                 MDAMB231.cyto.txt.gz	
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions $^ $@
+
+covd.regions.bed: bedtools.version \
+                  mcf10a.merged.sorted.bam \
+                  mdamb231.merged.sorted.bam \
+                  filt.isl.bed.gz 
+	bedtools/bin/bedtools genomecov -ibam mcf10a.merged.sorted.bam -bg | awk -v cov=${COV_THRESHOLD} '$$4 > cov' | bedtools/bin/bedtools merge -d 50 -i stdin >mcf10a.merged.sorted.bam.covd
+	bedtools/bin/bedtools genomecov -ibam mdamb231.merged.sorted.bam -bg | awk -v cov=${COV_THRESHOLD} '$$4 > cov' | bedtools/bin/bedtools merge -d 50 -i stdin >mdamb231.merged.sorted.bam.covd
+	bedtools/bin/bedtools intersect -a mcf10a.merged.sorted.bam.covd -b mdamb231.merged.sorted.bam.covd -u | \
+	bedtools/bin/bedtools intersect -a stdin -b filt.isl.bed.gz -u | awk -v mn=${SIZE_MN_THRESHOLD} -v mx=${SIZE_MX_THRESHOLD} '($$3 - $$2) > mn && ($$3 - $$2) < mx' | \
+	bedtools/bin/bedtools coverage -a stdin -b mcf10a.merged.sorted.bam mdamb231.merged.sorted.bam | sort -k 4rn >$@
+
+
+results/cn.region.plot.pdf: covd.regions.bed \
 	                    mcf10a.merged.sorted.bam.methyltest.cyto.txt \
-                            MCF10A.cyto.txt.gz \
                             mdamb231.merged.sorted.bam.methyltest.cyto.txt \
+                            MCF10A.cyto.txt.gz \
                             MDAMB231.cyto.txt.gz
 	mkdir -p results
-	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_region_plot 5 $^ $@
+	Rscript $(SCRIPT_DIR)/methylation_region_plot.R meth_diff_plot $^ $@
 
 # Strand plot
-
-results/cn.strand.plot.pdf: filt.regions.bed.gz \
+results/cn.strand.plot.pdf: covd.regions.bed \
 	                    mcf10a.merged.sorted.bam.methyltest.phase.tsv \
                             mdamb231.merged.sorted.bam.methyltest.phase.tsv
 	mkdir -p results
