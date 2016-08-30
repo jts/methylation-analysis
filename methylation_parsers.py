@@ -113,16 +113,27 @@ class TrainingSummary:
         
         # parse the structured file name
         fn_fields = os.path.basename(filename).rstrip().split(".")
-        assert(len(fn_fields) == 9)
+        
         assert(fn_fields[0] == "methyltrain")
         assert(fn_fields[-1] == "summary")
-
         self.sample = fn_fields[1]
         self.treatment = fn_fields[2]
-        self.pore = fn_fields[3]
-        self.lab = fn_fields[4]
-        self.date = fn_fields[5]
-        self.alphabet = fn_fields[6]
+
+        # Switch between R7/R9 name parsing (8 vs 9) fields
+        is_r9_file = filename.find(".r9.") != -1
+        if is_r9_file:
+            assert(len(fn_fields) == 9)
+            self.pore = fn_fields[3]
+
+        else:
+            assert(len(fn_fields) == 8)
+            # r7 files don't have the pore field
+            self.pore = "r7"
+
+        # R9 files have these fields offset by 1 to account for the pore string
+        self.lab = fn_fields[3 + is_r9_file]
+        self.date = fn_fields[4 + is_r9_file]
+        self.alphabet = fn_fields[5 + is_r9_file]
         self.short_alphabet = self.alphabet.split("_")[1]
 
         # read kmers

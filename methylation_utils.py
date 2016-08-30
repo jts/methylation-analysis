@@ -17,7 +17,10 @@ def display_model(s):
                   'c.p2.006':'comp.pop2',
                   't.007':'template',
                   'c.p1.007':'comp.pop1', 
-                  'c.p2.007':'comp.pop2' }
+                  'c.p2.007':'comp.pop2',
+                  't':'template',
+                  'c.p1':'comp.pop1', 
+                  'c.p2':'comp.pop2' }
     return model_dict[s]
 
 # From: http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers
