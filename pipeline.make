@@ -64,6 +64,7 @@ PORETOOLS=poretools
 HUMAN_REFERENCE=GRCh38.primary_assembly.genome.fa
 ECOLI_REFERENCE=ecoli_k12.fasta
 BISULFITE_BED=ENCFF279HCL.bed
+DATA_ROOT=../data
 
 #
 # Output targets
@@ -72,26 +73,21 @@ BISULFITE_BED=ENCFF279HCL.bed
 all: all-nucleotide all-cpg all-results-plots all-cancer-normal
 
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
-all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE)
+all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE) MCF10A.cyto.txt.gz MDAMB231.cyto.txt.gz
 
-all-nucleotide: ecoli_er2925.pcr.timp.113015.alphabet_nucleotide.fofn \
-                ecoli_er2925.pcr_MSssI.timp.113015.alphabet_nucleotide.fofn  \
-                ecoli_k12.pcr.loman.250915.alphabet_nucleotide.fofn \
-                ecoli_er2925.pcr.timp.021216.alphabet_nucleotide.fofn \
-                ecoli_er2925.pcr_MSssI.timp.021216.alphabet_nucleotide.fofn
+# Build a complete list of NA12878/Ecoli data sets
+# For E.coli this is just all of the ecoli* runs in the data directory
+# For NA12878 we have to manually add in the merged datasets as well
+all_NA12878=$(notdir $(patsubst %.fast5,%.fasta,$(wildcard $(DATA_ROOT)/NA12878.*.fast5))) \
+             NA12878.native.merged.fasta NA12878.native.r9.merged.fasta
+all_ecoli=$(notdir $(patsubst %.fast5,%.fasta,$(wildcard $(DATA_ROOT)/ecoli*.fast5)))
 
-all-cpg: ecoli_er2925.pcr.timp.113015.alphabet_cpg.fofn \
-         ecoli_er2925.pcr_MSssI.timp.113015.alphabet_cpg.fofn \
-         ecoli_k12.pcr.loman.250915.alphabet_cpg.fofn \
-         ecoli_er2925.pcr.timp.021216.alphabet_cpg.fofn \
-         ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
+# Rules to generate all trained models
+all-nucleotide: $(patsubst %.fasta,%.alphabet_nucleotide.fofn,$(all_ecoli))
+all-cpg: $(patsubst %.fasta,%.alphabet_cpg.fofn,$(all_ecoli))
 
-all-island-plots: results/NA12878.native.timp.093015.cpg_island_plot.pdf \
-                  results/NA12878.native.simpson.101515.cpg_island_plot.pdf \
-                  results/NA12878.native.simpson.103015.cpg_island_plot.pdf \
-                  results/NA12878.native.merged.cpg_island_plot.pdf \
-                  results/NA12878.pcr.simpson.021616.cpg_island_plot.pdf \
-                  results/NA12878.pcr_MSssI.simpson.021016.cpg_island_plot.pdf
+# Rules to generate all output reports
+all-island-plots: $(addprefix results/,$(patsubst %.fasta,%.cpg_island_plot.pdf,$(all_NA12878)))
 
 all-training-plots: results/figure.emissions.pdf results/figure.shift_by_position.pdf
 
@@ -103,23 +99,18 @@ all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-trainin
 
 all-cancer-normal: results/mcf10a.bsnanocorr.pdf results/mdamb231.bsnanocorr.pdf results/cn.region.plot.pdf results/cn.strand.plot.pdf
 
-
 ##################################################
 #
-# Step 1. Prepare input data 
+# Step 1. Prepare input data
 #
 ##################################################
-
-DATA_ROOT=../data
 
 #
 # Define variables for each data set
 #
 ECOLI_K12_PCR_RUN1_DATA=ecoli_k12.pcr.loman.250915.fasta
 
-ECOLI_ER2925_MSSSI_RUN1_DATA=ecoli_er2925.MSssI.timp.100215.fasta
-ECOLI_ER2925_MSSSI_RUN2_DATA=ecoli_er2925.MSssI.timp.100615.fasta
-
+# R7 data sets
 ECOLI_ER2925_PCR_RUN1_DATA=ecoli_er2925.pcr.timp.113015.fasta
 ECOLI_ER2925_PCR_RUN2_DATA=ecoli_er2925.pcr.timp.021216.fasta
 ECOLI_ER2925_PCR_MSSSI_RUN1_DATA=ecoli_er2925.pcr_MSssI.timp.113015.fasta
@@ -142,16 +133,36 @@ HUMAN_MDAMB231_RR1_DATA=mdamb231.rr1.timp.031316.fasta
 HUMAN_MDAMB231_RR2_DATA=mdamb231.rr2.timp.031316.fasta
 HUMAN_MDAMB231_MERGED_DATA=mdamb231.merged.fasta
 
+# R9 data sets
+ECOLI_ER2925_PCR_R9_RUN1_DATA=ecoli_er2925.pcr.r9.timp.061716.fasta
+ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA=ecoli_er2925.pcr_MSssI.r9.timp.061716.fasta
+
+HUMAN_NA12878_NATIVE_R9_RUN1_DATA=NA12878.native.r9.simpson.062416.fasta
+HUMAN_NA12878_NATIVE_R9_RUN2_DATA=NA12878.native.r9.timp.062216.fasta
+HUMAN_NA12878_NATIVE_R9_RUN3_DATA=NA12878.native.r9.timp.062416.fasta
+HUMAN_NA12878_NATIVE_R9_MERGED_DATA=NA12878.native.r9.merged.fasta
+
+HUMAN_NA12878_PCR_R9_DATA=NA12878.pcr.r9.timp.081016.fasta
+HUMAN_NA12878_PCR_R9_MSSSI_DATA=NA12878.pcr_MSssI.r9.timp.081016.fasta
+
 # For each data set that we use, define a variable containing its reference
 
 # E.coli
+
+# R7
 $(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 $(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
 
+# R9
+$(ECOLI_ER2925_PCR_R9_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+
 # Human
+
+# R7
 $(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
@@ -167,7 +178,17 @@ $(HUMAN_MDAMB231_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_MDAMB231_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 $(HUMAN_MDAMB231_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
 
+# R9
+$(HUMAN_NA12878_NATIVE_R9_RUN1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_NATIVE_R9_RUN2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_NATIVE_R9_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_NATIVE_R9_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_PCR_R9_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+$(HUMAN_NA12878_PCR_R9_MSSSI_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+
+#
 # Reference and region file used for model training
+#
 TRAINING_REFERENCE=$(ECOLI_REFERENCE)
 TRAINING_REGION="Chromosome:50000-3250000"
 
@@ -189,13 +210,10 @@ MIN_MAPQ=20
 
 # Reference genomes
 $(ECOLI_REFERENCE):
-	wget ftp://ftp.ensemblgenomes.org/pub/release-29/bacteria//fasta/bacteria_0_collection/escherichia_coli_str_k_12_substr_mg1655/dna/Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
-	gunzip Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz
-	mv Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa $@
+	curl -L ftp://ftp.ensemblgenomes.org/pub/release-29/bacteria//fasta/bacteria_0_collection/escherichia_coli_str_k_12_substr_mg1655/dna/Escherichia_coli_str_k_12_substr_mg1655.GCA_000005845.2.29.dna.genome.fa.gz | gunzip - > $@
 
 $(HUMAN_REFERENCE):
-	wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/GRCh38.primary_assembly.genome.fa.gz
-	-gunzip GRCh38.primary_assembly.genome.fa.gz
+	curl -L ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/GRCh38.primary_assembly.genome.fa.gz | gunzip - > $@
 
 #
 # Rules for generating fasta files from FAST5
@@ -227,8 +245,10 @@ $(HUMAN_MDAMB231_MERGED_DATA): mdamb231.rr1.timp.031316.fasta \
                                mdamb231.rr2.timp.031316.fasta 
 	cat $^ > $@
 
-
-
+$(HUMAN_NA12878_NATIVE_R9_MERGED_DATA): $(HUMAN_NA12878_NATIVE_R9_RUN1_DATA) \
+                                        $(HUMAN_NA12878_NATIVE_R9_RUN2_DATA) \
+                                        $(HUMAN_NA12878_NATIVE_R9_RUN3_DATA)
+	cat $^ > $@
 
 ##################################################
 #
@@ -269,18 +289,39 @@ $(HUMAN_MDAMB231_MERGED_DATA): mdamb231.rr1.timp.031316.fasta \
 #
 ##################################################
 
-# symlink the ont models from the analysis directory
+# initialize the R7 models
 t.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_template_median68pA.model
-	ln -s $^ $@
+	$(SCRIPT_DIR)/initialize_model.sh $^ template t.006 SQK006 > $@
 
 c.p1.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_complement_median68pA_pop1.model
-	ln -s $^ $@
+	$(SCRIPT_DIR)/initialize_model.sh $^ complement.pop1 c.p1.006 SQK006 > $@
 
 c.p2.006.ont.model: $(SCRIPT_DIR)/models/r7.3_e6_70bps_6mer_complement_median68pA_pop2.model
-	ln -s $^ $@
+	$(SCRIPT_DIR)/initialize_model.sh $^ complement.pop2 c.p2.006 SQK006 > $@
+
+# initalize R9 models
+MODEL_REV=rev2
+t.007.ont.model: $(SCRIPT_DIR)/models/template_median68pA.r9.$(MODEL_REV).model
+	$(SCRIPT_DIR)/initialize_model.sh $^ template t.007 SQK007 > $@
+
+c.p1.007.ont.model: $(SCRIPT_DIR)/models/complement_median68pA_pop1.r9.$(MODEL_REV).model
+	$(SCRIPT_DIR)/initialize_model.sh $^ complement.pop1 c.p1.007 SQK007 > $@
+
+c.p2.007.ont.model: $(SCRIPT_DIR)/models/complement_median68pA_pop2.r9.$(MODEL_REV).model
+	$(SCRIPT_DIR)/initialize_model.sh $^ complement.pop2 c.p2.007 SQK007 > $@
+
+# Make a 5-mer model from the input 6-mer model (used by nanopolish to calculate scalings)
+%.5mer.model: %.model
+	python nanopolish/scripts/dropmodel.py --type base -i $^ > $@
 
 # Make a file-of-filenames from a model set
-%.fofn: t.006.%.model c.p1.006.%.model c.p2.006.%.model
+
+# R7 models
+%.R7.fofn: t.006.%.model c.p1.006.%.model c.p2.006.%.model
+	echo $^ | tr " " "\n" > $@
+
+# R9 models
+%.R9.fofn: t.007.%.model c.p1.007.%.model c.p2.007.%.model t.007.%.5mer.model c.p1.007.%.5mer.model c.p2.007.%.5mer.model
 	echo $^ | tr " " "\n" > $@
 
 # this code generates a training rule for a data set/alphabet pair
@@ -288,18 +329,20 @@ define generate-training-rules
 
 $(eval DATASET=$(basename $1))
 $(eval ALPHABET=$2)
+$(eval PORE_VERSION=$3)
 $(eval PREFIX=$(DATASET).alphabet_$(ALPHABET))
 
 # Training rule
-$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).fofn nanopolish.version
+$(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai $(TRAINING_REFERENCE).alphabet_$(ALPHABET) ont.alphabet_$(ALPHABET).$(PORE_VERSION).fofn nanopolish.version
 	nanopolish/nanopolish methyltrain -t $(THREADS) $(METHYLTRAIN_EXTRA_OPTS) \
                                       --train-kmers all \
                                       --out-fofn $$@ \
                                       --out-suffix .$(PREFIX).model \
-                                      -m ont.alphabet_$(ALPHABET).fofn \
+                                      -m ont.alphabet_$(ALPHABET).$(PORE_VERSION).fofn \
                                       -b $(DATASET).sorted.bam \
                                       -r $(DATASET).fasta \
                                       -g $(TRAINING_REFERENCE).alphabet_$(ALPHABET) \
+                                      --filter-policy $(PORE_VERSION) \
                                       $(TRAINING_REGION)
 
 # Rules for additional files made by methyltrain
@@ -324,11 +367,17 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	ln -s $< $@
 
 # make the rules using the generation function
-$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),nucleotide))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleotide))
+
+# R7
+$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),nucleotide,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),nucleotide,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),nucleotide,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleotide,R7))
+
+# R9
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_R9_RUN1_DATA),nucleotide,R9))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA),nucleotide,R9))
 
 #
 # 3b. Train over a CpG alphabet
@@ -343,11 +392,17 @@ $(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(SCRIPT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
 # make the rules using the generation function
-$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),cpg))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg))
+
+# R7
+$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),cpg,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),cpg,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),cpg,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),cpg,R7))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg,R7))
+
+# R9
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_R9_RUN1_DATA),cpg,R9))
+$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA),cpg,R9))
 
 #
 # 3c. Make training plots
@@ -395,14 +450,16 @@ results/figure.shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.02
 # nucleotide
 results/pcr.nucleotide.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
                                            methyltrain.$(ECOLI_ER2925_PCR_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
+                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
+                                           methyltrain.$(ECOLI_ER2925_PCR_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr --alphabet nucleotide $^ > $@
 
 # cpg
 results/pcr.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
                                            methyltrain.$(ECOLI_ER2925_PCR_RUN2_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary)
+                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
+                                           methyltrain.$(ECOLI_ER2925_PCR_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr --alphabet cpg $^ > $@
 
@@ -410,13 +467,15 @@ results/pcr.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fa
 
 # nucleotide
 results/pcr_MSssI.nucleotide.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                                 methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary)
+                                                 methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary) \
+                                                 methyltrain.$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr_MSssI --alphabet nucleotide $^ > $@
 
 # CpG
 results/pcr_MSssI.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                          methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_cpg.model.summary)
+                                          methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_cpg.model.summary) \
+                                          methyltrain.$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr_MSssI --alphabet cpg $^ > $@
 
@@ -450,8 +509,7 @@ results/all.training.tables.tex: results/pcr.nucleotide.training.table.tex \
 
 # Download a bed file summarizing an NA12878 bisulfite experiment from ENCODE
 $(BISULFITE_BED):
-	wget https://www.encodeproject.org/files/ENCFF279HCL/@@download/$(BISULFITE_BED).gz
-	gunzip $(BISULFITE_BED).gz
+	curl -L https://www.encodeproject.org/files/ENCFF279HCL/download/$(BISULFITE_BED).gz | gunzip - > $@
 
 # Extract tsv for strand-based methylation plots
 %.methyltest.phase.tsv: %.methyltest.sites.bed
@@ -460,7 +518,6 @@ $(BISULFITE_BED):
 # Summarize methylation per cg
 %.methyltest.cyto.txt: %.methyltest.phase.tsv
 	python $(SCRIPT_DIR)/per_cg_methylation.py -i $<
-
 
 #
 # CpG Island Methylation Results
@@ -524,24 +581,26 @@ NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_F
 results/figure.methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
                                                 NA12878.native.merged.methylated_sites.distance_to_TSS.table \
                                                 NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
-                                                NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table
+                                                NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table \
+                                                NA12878.pcr.r9.timp.081016.methylated_sites.distance_to_TSS.table \
+                                                NA12878.native.r9.merged.methylated_sites.distance_to_TSS.table
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
 
 
 results/figure.methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
-                                                              NA12878.native.merged.methylated_sites.distance_to_TSS.table
+                                                              NA12878.native.merged.methylated_sites.distance_to_TSS.table \
+                                                              NA12878.pcr.r9.timp.081016.methylated_sites.distance_to_TSS.table \
+                                                              NA12878.pcr_MSssI.r9.timp.081016.methylated_sites.distance_to_TSS.table
 	mkdir -p results
-
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot_by_chromosome $^ $@
-
 
 #
 # Site likelihood plot
 #
 results/figure.site_likelihood_distribution.pdf: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.tsv \
-                     NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.tsv \
-                     NA12878.native.merged.sorted.bam.methyltest.sites.tsv
+                                                 NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.tsv \
+                                                 NA12878.native.merged.sorted.bam.methyltest.sites.tsv
 	mkdir -p results/
 	Rscript $(SCRIPT_DIR)/methylation_plots.R site_likelihood_distribution $^ $@
 
@@ -574,7 +633,7 @@ results/accuracy_by_kmer.pdf: accuracy.by_kmer.tsv
 
 # D/l illumina bs data
 
-MCF10A.cyto.txt.gz: 
+MCF10A.cyto.txt.gz:
 	wget http://timplab.org/data/MCF10A.cyto.txt.gz
 
 MDAMB231.cyto.txt.gz:
@@ -583,7 +642,7 @@ MDAMB231.cyto.txt.gz:
 
 # Correlation plot
 
-results/mcf10a.bsnanocorr.pdf: MCF10A.cyto.txt.gz mcf10a.merged.sorted.bam.methyltest.cyto.txt 
+results/mcf10a.bsnanocorr.pdf: MCF10A.cyto.txt.gz mcf10a.merged.sorted.bam.methyltest.cyto.txt
 	Rscript $(SCRIPT_DIR)/methylation_region_plot.R correlation $^ $@
 
 results/mdamb231.bsnanocorr.pdf: MDAMB231.cyto.txt.gz mdamb231.merged.sorted.bam.methyltest.cyto.txt
@@ -598,7 +657,7 @@ SIZE_MX_THRESHOLD=7000
 
 filt.isl.bed.gz: $(CGI_FILE) \
                  MCF10A.cyto.txt.gz \
-                 MDAMB231.cyto.txt.gz	
+                 MDAMB231.cyto.txt.gz
 	Rscript $(SCRIPT_DIR)/methylation_region_plot.R best_regions $^ $@
 
 covd.regions.bed: bedtools.version \

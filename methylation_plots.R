@@ -208,6 +208,8 @@ make_emissions_figure <- function(outfile,
         # parse model parameters
         strand = head(data_sets[[current_file]], 1)$model
         kmer = head(data_sets[[current_file]], 1)$model_kmer
+
+        # TODO: unify R7/R9
         modelname  <- str_c(c(strand, name_fields[2:6], "model"), collapse=".")
         params <- read.table(modelname, col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
 
@@ -237,7 +239,7 @@ make_mean_shift_by_position_figure <- function(outfile, filename) {
     p <- ggplot(data, aes(difference)) + 
              geom_histogram(binwidth=0.25) + 
              facet_grid(m_pattern ~ model, scales="free_y") + 
-             xlim(-4, 4) + 
+             xlim(-8, 8) + 
              global_theme();
     multiplot(p, cols=1)
     dev.off()

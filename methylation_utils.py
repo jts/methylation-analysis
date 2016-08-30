@@ -12,7 +12,12 @@ def display_sample_name(s):
     return "\\emph{E. coli}" + " " + fields[1].upper()
 
 def display_model(s):
-    model_dict = {'t.006':'template', 'c.p1.006':'comp.pop1', 'c.p2.006':'comp.pop2'}
+    model_dict = {'t.006':'template', 
+                  'c.p1.006':'comp.pop1', 
+                  'c.p2.006':'comp.pop2',
+                  't.007':'template',
+                  'c.p1.007':'comp.pop1', 
+                  'c.p2.007':'comp.pop2' }
     return model_dict[s]
 
 # From: http://stackoverflow.com/questions/3154460/python-human-readable-large-numbers

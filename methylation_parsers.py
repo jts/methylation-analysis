@@ -113,15 +113,16 @@ class TrainingSummary:
         
         # parse the structured file name
         fn_fields = os.path.basename(filename).rstrip().split(".")
-        assert(len(fn_fields) == 8)
+        assert(len(fn_fields) == 9)
         assert(fn_fields[0] == "methyltrain")
         assert(fn_fields[-1] == "summary")
 
         self.sample = fn_fields[1]
         self.treatment = fn_fields[2]
-        self.lab = fn_fields[3]
-        self.date = fn_fields[4]
-        self.alphabet = fn_fields[5]
+        self.pore = fn_fields[3]
+        self.lab = fn_fields[4]
+        self.date = fn_fields[5]
+        self.alphabet = fn_fields[6]
         self.short_alphabet = self.alphabet.split("_")[1]
 
         # read kmers

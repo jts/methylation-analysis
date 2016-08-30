@@ -13,7 +13,7 @@ from methylation_parsers import ONTModel, TrainingSummary
 TableRow = namedtuple('TableRow', ['sample', 'treatment', 'lab', 'date',
                                    'model', 'alphabet', 'total_events',
                                    'total_kmers', 'trained_kmers',
-                                   'd0_1', 'd0_5', 'd1_0', 'd2_0'])
+                                   'd0_1', 'd0_5', 'd1_0', 'd2_0', 'd4_0'])
 
 def load_ont_models_from_fofn(ont_fofn, out_model_set):
     f = open(ont_fofn)
@@ -37,7 +37,7 @@ def print_table_latex(table, treatment, alphabet):
     print r'\hline'
     print field_sep.join(header_fields) + r'\\'
 
-    for model in ["t.006", "c.p1.006", "c.p2.006"]:
+    for model in model_names:
 
         print r'\hline'
         # Count the number of rows in this block
@@ -57,6 +57,7 @@ def print_table_latex(table, treatment, alphabet):
             assert(diff_cuts[1] == 0.5)
             assert(diff_cuts[2] == 1.0)
             assert(diff_cuts[3] == 2.0)
+            assert(diff_cuts[4] == 4.0)
 
             model_out = ""
 
@@ -72,7 +73,8 @@ def print_table_latex(table, treatment, alphabet):
                     row.d0_1,
                     row.d0_5,
                     row.d1_0,
-                    row.d2_0]
+                    row.d2_0,
+                    row.d4_0]
             print " & ".join([str(x) for x in out]) + r'\\'
         print r'\hline'
     print r'\end{tabular}'
@@ -86,6 +88,9 @@ def print_table_latex(table, treatment, alphabet):
 #
 # main
 ont_models = dict()
+pore_version = "007"
+model_names = [ mn + "." + pore_version for mn in ["t", "c.p1", "c.p2"]]
+
 load_ont_models_from_fofn("ont.alphabet_nucleotide.fofn", ont_models)
 load_ont_models_from_fofn("ont.alphabet_cpg.fofn", ont_models)
 
@@ -96,7 +101,7 @@ args, files = parser.parse_known_args()
 
 # We calculate the number of kmers that trained more than 0.1pA, 0.5pA, etc
 # different than the reference model
-diff_cuts = [ 0.1, 0.5, 1.0, 2.0]
+diff_cuts = [ 0.1, 0.5, 1.0, 2.0, 4.0]
 
 table_rows = list()
 

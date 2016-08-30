@@ -1,13 +1,3 @@
-#model_name	r7.3_e6_70bps_6mer_complement_median68pA_pop2.model
-#drift	0.00305496120568
-#var_sd	1.40409039089
-#shift	5.06252822614
-#scale	1.0222245547
-#stay_prob	0.0142889126506
-#scale_sd	1.06361321598
-#var	1.06150225211
-#skip_prob	0.224272092949
-#step_prob	0.7614389944
 kmer	level_mean	level_stdv	sd_mean	sd_stdv	weight
 AAAAAA	64.629638	0.833362	0.737681	0.242484	1358.638317
 AAAAAC	62.527649	0.635756	0.807218	0.277567	1430.270694
