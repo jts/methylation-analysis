@@ -75,12 +75,20 @@ all: all-nucleotide all-cpg all-results-plots all-cancer-normal
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
 all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE) MCF10A.cyto.txt.gz MDAMB231.cyto.txt.gz
 
+# Function from http://stackoverflow.com/questions/6145041/makefile-filter-out-strings-containing-a-character
+# Removes all strings containing the argument from the input list
+FILTER_OUT = $(foreach v,$(2),$(if $(findstring $(1),$(v)),,$(v)))
+# Only keeps strings containing the argument
+FILTER_IN = $(foreach v,$(2),$(if $(findstring $(1),$(v)),$(v),))
+
 # Build a complete list of NA12878/Ecoli data sets
 # For E.coli this is just all of the ecoli* runs in the data directory
 # For NA12878 we have to manually add in the merged datasets as well
 all_NA12878=$(notdir $(patsubst %.fast5,%.fasta,$(wildcard $(DATA_ROOT)/NA12878.*.fast5))) \
              NA12878.native.merged.fasta NA12878.native.r9.merged.fasta
 all_ecoli=$(notdir $(patsubst %.fast5,%.fasta,$(wildcard $(DATA_ROOT)/ecoli*.fast5)))
+all_cancer=mcf10a.rr1.timp.031116.fasta mcf10a.rr2.timp.031116.fasta mcf10a.merged.fasta \
+           mdamb231.rr1.timp.031316.fasta mdamb231.rr2.timp.031316.fasta mdamb231.merged.fasta
 
 # Rules to generate all trained models
 all-nucleotide: $(patsubst %.fasta,%.alphabet_nucleotide.fofn,$(all_ecoli))
@@ -147,44 +155,14 @@ HUMAN_NA12878_PCR_R9_MSSSI_DATA=NA12878.pcr_MSssI.r9.timp.081016.fasta
 
 # For each data set that we use, define a variable containing its reference
 
-# E.coli
+# E.coli samples
+$(foreach file,$(all_ecoli),$(eval $(file)_REFERENCE=$(ECOLI_REFERENCE)))
 
-# R7
-$(ECOLI_K12_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-$(ECOLI_ER2925_PCR_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-$(ECOLI_ER2925_PCR_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA)_REFERENCE=$(ECOLI_REFERENCE)
+# NA12878 samples
+$(foreach file,$(all_NA12878),$(eval $(file)_REFERENCE=$(HUMAN_REFERENCE)))
 
-# R9
-$(ECOLI_ER2925_PCR_R9_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA)_REFERENCE=$(ECOLI_REFERENCE)
-
-# Human
-
-# R7
-$(HUMAN_NA12878_NATIVE_RUN1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_NATIVE_RUN2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_NATIVE_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_NATIVE_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_PCR_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_PCR_MSSSI_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-
-$(HUMAN_MCF10A_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_MCF10A_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_MCF10A_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-
-$(HUMAN_MDAMB231_RR1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_MDAMB231_RR2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_MDAMB231_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-
-# R9
-$(HUMAN_NA12878_NATIVE_R9_RUN1_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_NATIVE_R9_RUN2_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_NATIVE_R9_RUN3_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_NATIVE_R9_MERGED_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_PCR_R9_DATA)_REFERENCE=$(HUMAN_REFERENCE)
-$(HUMAN_NA12878_PCR_R9_MSSSI_DATA)_REFERENCE=$(HUMAN_REFERENCE)
+# Cancer samples
+$(foreach file,$(all_cancer),$(eval $(file)_REFERENCE=$(HUMAN_REFERENCE)))
 
 #
 # Reference and region file used for model training
@@ -367,17 +345,10 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 	ln -s $< $@
 
 # make the rules using the generation function
-
-# R7
-$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),nucleotide,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),nucleotide,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),nucleotide,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),nucleotide,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),nucleotide,R7))
-
-# R9
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_R9_RUN1_DATA),nucleotide,R9))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA),nucleotide,R9))
+all_ecoli_R7=$(call FILTER_OUT,r9,$(all_ecoli))
+all_ecoli_R9=$(call FILTER_IN,r9,$(all_ecoli))
+$(foreach file,$(all_ecoli_R7),$(info $(call generate-training-rules,$(file),nucleotide,R7)))
+$(foreach file,$(all_ecoli_R9),$(info $(call generate-training-rules,$(file),nucleotide,R9)))
 
 #
 # 3b. Train over a CpG alphabet
@@ -392,17 +363,8 @@ $(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(SCRIPT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
 # make the rules using the generation function
-
-# R7
-$(eval $(call generate-training-rules,$(ECOLI_K12_PCR_RUN1_DATA),cpg,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN1_DATA),cpg,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_RUN2_DATA),cpg,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA),cpg,R7))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA),cpg,R7))
-
-# R9
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_R9_RUN1_DATA),cpg,R9))
-$(eval $(call generate-training-rules,$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA),cpg,R9))
+$(foreach file,$(all_ecoli_R7),$(info $(call generate-training-rules,$(file),cpg,R7)))
+$(foreach file,$(all_ecoli_R9),$(info $(call generate-training-rules,$(file),cpg,R9)))
 
 #
 # 3c. Make training plots
