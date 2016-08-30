@@ -347,8 +347,8 @@ $(TRAINING_REFERENCE).alphabet_nucleotide: $(TRAINING_REFERENCE)
 # make the rules using the generation function
 all_ecoli_R7=$(call FILTER_OUT,r9,$(all_ecoli))
 all_ecoli_R9=$(call FILTER_IN,r9,$(all_ecoli))
-$(foreach file,$(all_ecoli_R7),$(info $(call generate-training-rules,$(file),nucleotide,R7)))
-$(foreach file,$(all_ecoli_R9),$(info $(call generate-training-rules,$(file),nucleotide,R9)))
+$(foreach file,$(all_ecoli_R7),$(eval $(call generate-training-rules,$(file),nucleotide,R7)))
+$(foreach file,$(all_ecoli_R9),$(eval $(call generate-training-rules,$(file),nucleotide,R9)))
 
 #
 # 3b. Train over a CpG alphabet
@@ -363,8 +363,8 @@ $(TRAINING_REFERENCE).alphabet_cpg: $(TRAINING_REFERENCE) pythonlibs.version
 	python $(SCRIPT_DIR)/methylate_reference.py --recognition cpg $< > $@
 
 # make the rules using the generation function
-$(foreach file,$(all_ecoli_R7),$(info $(call generate-training-rules,$(file),cpg,R7)))
-$(foreach file,$(all_ecoli_R9),$(info $(call generate-training-rules,$(file),cpg,R9)))
+$(foreach file,$(all_ecoli_R7),$(eval $(call generate-training-rules,$(file),cpg,R7)))
+$(foreach file,$(all_ecoli_R9),$(eval $(call generate-training-rules,$(file),cpg,R9)))
 
 #
 # 3c. Make training plots
