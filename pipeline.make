@@ -407,37 +407,31 @@ results/figure.shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.02
 # 3d. Make training tables from the summary files
 #
 
+# Subset by treatment and add "methyltrain." to the start of every filename
+mt_ecoli_pcr=$(addprefix methyltrain.,$(call FILTER_IN,.pcr.,$(all_ecoli)))
+mt_ecoli_pcr_msssi=$(addprefix methyltrain.,$(call FILTER_IN,.pcr_MSssI.,$(all_ecoli)))
+
 # PCR data
 
 # nucleotide
-results/pcr.nucleotide.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                           methyltrain.$(ECOLI_ER2925_PCR_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                           methyltrain.$(ECOLI_ER2925_PCR_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
+results/pcr.nucleotide.training.table.tex: $(patsubst %.fasta,%.alphabet_nucleotide.model.summary,$(mt_ecoli_pcr))
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr --alphabet nucleotide $^ > $@
 
 # cpg
-results/pcr.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                           methyltrain.$(ECOLI_ER2925_PCR_RUN2_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                           methyltrain.$(ECOLI_K12_PCR_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                           methyltrain.$(ECOLI_ER2925_PCR_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
+results/pcr.cpg.training.table.tex: $(patsubst %.fasta,%.alphabet_cpg.model.summary,$(mt_ecoli_pcr))
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr --alphabet cpg $^ > $@
 
 # PCR + M.SssI
 
 # nucleotide
-results/pcr_MSssI.nucleotide.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                                 methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_nucleotide.model.summary) \
-                                                 methyltrain.$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
+results/pcr_MSssI.nucleotide.training.table.tex: $(patsubst %.fasta,%.alphabet_nucleotide.model.summary,$(mt_ecoli_pcr_msssi))
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr_MSssI --alphabet nucleotide $^ > $@
 
 # CpG
-results/pcr_MSssI.cpg.training.table.tex: methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN1_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                          methyltrain.$(ECOLI_ER2925_PCR_MSSSI_RUN2_DATA:.fasta=.alphabet_cpg.model.summary) \
-                                          methyltrain.$(ECOLI_ER2925_PCR_MSSSI_R9_RUN1_DATA:.fasta=.alphabet_nucleotide.model.summary)
+results/pcr_MSssI.cpg.training.table.tex: $(patsubst %.fasta,%.alphabet_cpg.model.summary,$(mt_ecoli_pcr_msssi))
 	mkdir -p results
 	python $(SCRIPT_DIR)/generate_training_table.py --treatment pcr_MSssI --alphabet cpg $^ > $@
 
