@@ -148,10 +148,19 @@ make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
     # merge datasets
     all_data <- NULL
     for(n in names) {
+        tmp <- data_sets[[n]]
+
+        mu <- param_means[[n]]
+        sd = param_stdvs[[n]]
+
+        # The level_mean in the data frame had shift and scale applied to it
+        # We need to apply the var scaling as well which requires an additional transformation
+        tmp$transformed_level_mean <- (tmp$level_mean - mu) / tmp$scaled_read_var + mu
+
         if(is.null(all_data)) {
-            all_data <- data_sets[[n]]
+            all_data <- tmp
         } else {
-            all_data <- rbind(all_data, data_sets[[n]])
+            all_data <- rbind(all_data, tmp)
         }
     }
 
@@ -160,10 +169,10 @@ make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
     kmer <- head(all_data, 1)$model_kmer
 
     # make the histogram
-    p <- ggplot(all_data, aes(level_mean, fill=dataset)) +
+    p <- ggplot(all_data, aes(transformed_level_mean, fill=dataset)) +
             geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
             scale_fill_manual(values=palette) +
-            xlab("Measured event level (pA)") +
+            xlab("Transformed event level (pA)") +
             ggtitle(paste("Event distribution for k-mer", kmer))
 
     # add panel label
@@ -182,12 +191,7 @@ make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
 #
 # Emissions figure - examples of distributions
 #
-make_emissions_figure <- function(outfile,
-                                  panelA_file,
-                                  panelB1_file,
-                                  panelB2_file,
-                                  panelC1_file,
-                                  panelC2_file)
+make_emissions_figure <- function(outfile, ...)
 {
     require(stringr)
 
@@ -195,8 +199,9 @@ make_emissions_figure <- function(outfile,
     param_means <- list()
     param_stdvs <- list()
 
+    filenames <- c(...)
     idx <- 1
-    for(current_file in c(panelA_file, panelB1_file, panelB2_file, panelC1_file, panelC2_file)) {
+    for(current_file in filenames) {
 
         # Parse the structured name
         name_fields = str_split(current_file, fixed("."))[[1]]
@@ -205,12 +210,14 @@ make_emissions_figure <- function(outfile,
         # Load the data
         data_sets[[current_file]] <- load_training_data(current_file, display_name)
 
+        # Infer pore type
+        pore = ifelse(str_count(current_file, "r9"), "R9", "R7")
+        data_sets[[current_file]]$pore = pore
+
         # parse model parameters
         strand = head(data_sets[[current_file]], 1)$model
         kmer = head(data_sets[[current_file]], 1)$model_kmer
-
-        # TODO: unify R7/R9
-        modelname  <- str_c(c(strand, name_fields[2:6], "model"), collapse=".")
+        modelname  <- str_c(c(strand, name_fields[seq(2, length(name_fields) - 2)], "model"), collapse=".")
         params <- read.table(modelname, col.names=c("kmer", "level_mean", "level_stdv", "sd_mean", "sd_stdv"))
 
         # save the parameters for this kmer
@@ -219,12 +226,25 @@ make_emissions_figure <- function(outfile,
         param_stdvs[[current_file]] <- kmer_params[1,]$level_stdv
     }
 
-    pdf(outfile, 7, 15)
-    panel_A <- make_panel(list(panelA_file), data_sets, param_means, param_stdvs, "A")
-    panel_B <- make_panel(list(panelB1_file, panelB2_file), data_sets, param_means, param_stdvs, "B")
-    panel_C <- make_panel(list(panelC1_file, panelC2_file), data_sets, param_means, param_stdvs, "C")
+    # Build lists of files that should go on panel A,B,C
+    panelA_R7_files <- Filter(function(x) { return(str_count(x, "panelA") & str_count(x, "r9") == 0) }, filenames)
+    panelB_R7_files <- Filter(function(x) { return(str_count(x, "panelB") & str_count(x, "r9") == 0) }, filenames)
+    panelC_R7_files <- Filter(function(x) { return(str_count(x, "panelC") & str_count(x, "r9") == 0) }, filenames)
 
-    multiplot(panel_A, panel_B, panel_C, cols=1)
+    panelA_R9_files <- Filter(function(x) { return(str_count(x, "panelA") & str_count(x, "r9")) }, filenames)
+    panelB_R9_files <- Filter(function(x) { return(str_count(x, "panelB") & str_count(x, "r9")) }, filenames)
+    panelC_R9_files <- Filter(function(x) { return(str_count(x, "panelC") & str_count(x, "r9")) }, filenames)
+
+    pdf(outfile, 15, 15)
+    panel_A_R7 <- make_panel(panelA_R7_files, data_sets, param_means, param_stdvs, "A")
+    panel_B_R7 <- make_panel(panelB_R7_files, data_sets, param_means, param_stdvs, "B")
+    panel_C_R7 <- make_panel(panelC_R7_files, data_sets, param_means, param_stdvs, "C")
+
+    panel_A_R9 <- make_panel(panelA_R9_files, data_sets, param_means, param_stdvs, "")
+    panel_B_R9 <- make_panel(panelB_R9_files, data_sets, param_means, param_stdvs, "")
+    panel_C_R9 <- make_panel(panelC_R9_files, data_sets, param_means, param_stdvs, "")
+
+    multiplot(panel_A_R7, panel_A_R9, panel_B_R7, panel_B_R9, panel_C_R7, panel_C_R9, cols=2)
     dev.off()
 }
 
@@ -542,7 +562,7 @@ if(! interactive()) {
     if(command == "training_plots") {
         make_training_plots(args[2], args[3])
     } else if(command == "make_emissions_figure") {
-        make_emissions_figure(args[2], args[3], args[4], args[5], args[6], args[7])
+        make_emissions_figure(args[2], as.vector(args[3:length(args)]))
     } else if(command == "make_mean_shift_by_position_figure") {
         make_mean_shift_by_position_figure(args[2], args[3])
     } else if(command == "human_cpg_island_plot") {

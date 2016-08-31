@@ -371,29 +371,41 @@ $(foreach file,$(all_ecoli_R9),$(eval $(call generate-training-rules,$(file),cpg
 #
 
 # Emissions figure, three panels showing baseline, strong methylation signal, weak/no methylation signal
-PANEL_A_SET=ecoli_er2925.pcr.timp.021216.alphabet_nucleotide
-PANEL_BC_SET1=ecoli_er2925.pcr.timp.021216.alphabet_cpg
-PANEL_BC_SET2=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg
+
+# R7
+PANEL_A_R7_SET=ecoli_er2925.pcr.timp.021216.alphabet_nucleotide
+PANEL_BC_R7_SET1=ecoli_er2925.pcr.timp.021216.alphabet_cpg
+PANEL_BC_R7_SET2=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg
+
+# R9
+PANEL_A_R9_SET=ecoli_er2925.pcr.r9.timp.061716.alphabet_nucleotide
+PANEL_BC_R9_SET1=ecoli_er2925.pcr.r9.timp.061716.alphabet_cpg
+PANEL_BC_R9_SET2=ecoli_er2925.pcr_MSssI.r9.timp.061716.alphabet_cpg
 
 PANEL_A_KMER="AGGTAG"
 PANEL_B_KMER="AGGTMG"
 PANEL_C_KMER="TMGAGT"
 
-results/figure.emissions.pdf: methyltrain.$(PANEL_A_SET).panelA.tsv \
-                              methyltrain.$(PANEL_BC_SET1).panelB.tsv \
-                              methyltrain.$(PANEL_BC_SET2).panelB.tsv \
-                              methyltrain.$(PANEL_BC_SET1).panelC.tsv \
-                              methyltrain.$(PANEL_BC_SET2).panelC.tsv
+results/figure.emissions.pdf: methyltrain.$(PANEL_A_R7_SET).panelA.tsv \
+                              methyltrain.$(PANEL_BC_R7_SET1).panelB.tsv \
+                              methyltrain.$(PANEL_BC_R7_SET2).panelB.tsv \
+                              methyltrain.$(PANEL_BC_R7_SET1).panelC.tsv \
+                              methyltrain.$(PANEL_BC_R7_SET2).panelC.tsv \
+	                          methyltrain.$(PANEL_A_R9_SET).panelA.tsv \
+                              methyltrain.$(PANEL_BC_R9_SET1).panelB.tsv \
+                              methyltrain.$(PANEL_BC_R9_SET2).panelB.tsv \
+                              methyltrain.$(PANEL_BC_R9_SET1).panelC.tsv \
+                              methyltrain.$(PANEL_BC_R9_SET2).panelC.tsv
 	Rscript $(SCRIPT_DIR)/methylation_plots.R make_emissions_figure $@ $^
 
 %.panelA.tsv: %.model.round4.events.tsv
-	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_A_KMER))' > $@
+	cat $^ | awk 'NR == 1 || ($$1 ~ "t.00" && $$2 == $(PANEL_A_KMER))' > $@
 
 %.panelB.tsv: %.model.round4.events.tsv
-	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_B_KMER))' > $@
+	cat $^ | awk 'NR == 1 || ($$1 ~ "t.00" && $$2 == $(PANEL_B_KMER))' > $@
 
 %.panelC.tsv: %.model.round4.events.tsv
-	cat $^ | awk 'NR == 1 || ($$1 == "t.006" && $$2 == $(PANEL_C_KMER))' > $@
+	cat $^ | awk 'NR == 1 || ($$1 ~ "t.00" && $$2 == $(PANEL_C_KMER))' > $@
 
 # Mean-shift by position figure
 %.alphabet_cpg.model.summary.delta: %.alphabet_cpg.model.summary
