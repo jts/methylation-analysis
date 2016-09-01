@@ -602,19 +602,32 @@ results/figure.site_likelihood_distribution.pdf: NA12878.pcr.simpson.021616.sort
 #
 # Accuracy results
 #
-accuracy.by_threshold.tsv: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
-                           NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
-	python $(SCRIPT_DIR)/calculate_call_accuracy.py --unmethylated NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.bed \
-                                                    --methylated NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.bed
 
-accuracy.precision_recall.tsv: accuracy.by_threshold.tsv
-accuracy.by_kmer.tsv: accuracy.by_threshold.tsv
+# Helper to run FILTER_IN and change the suffix
+FILTER_IN_AND_MAKE_SITES = $(patsubst %.fasta,%.sorted.bam.methyltest.sites.bed,$(call FILTER_IN,$(1),$(2)))
 
-results/accuracy_roc.pdf: accuracy.precision_recall.tsv
+NA12878_R7_PCR=$(call FILTER_IN_AND_MAKE_SITES,.pcr.,$(all_NA12878_R7))
+NA12878_R7_PCR_MSSSI=$(call FILTER_IN_AND_MAKE_SITES,.pcr_MSssI,$(all_NA12878_R7))
+NA12878_R9_PCR=$(call FILTER_IN_AND_MAKE_SITES,.pcr.,$(all_NA12878_R9))
+NA12878_R9_PCR_MSSSI=$(call FILTER_IN_AND_MAKE_SITES,.pcr_MSssI,$(all_NA12878_R9))
+
+accuracy.by_threshold.R7.tsv: $(NA12878_R7_PCR) $(NA12878_R7_PCR_MSSSI)
+	python $(SCRIPT_DIR)/calculate_call_accuracy.py --unmethylated $(NA12878_R7_PCR) \
+                                                    --methylated $(NA12878_R7_PCR_MSSSI) \
+                                                    --pore R7
+accuracy.by_threshold.R9.tsv: $(NA12878_R9_PCR) $(NA12878_R9_PCR_MSSSI)
+	python $(SCRIPT_DIR)/calculate_call_accuracy.py --unmethylated $(NA12878_R9_PCR) \
+                                                    --methylated $(NA12878_R9_PCR_MSSSI) \
+                                                    --pore R9
+
+accuracy.precision_recall.%: accuracy.by_threshold.%
+accuracy.by_kmer.%: accuracy.by_threshold.%
+
+results/figure.accuracy_roc.pdf: accuracy.precision_recall.R7.tsv accuracy.precision_recall.R9.tsv
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_roc $^ $@
 
-results/figure.accuracy_by_threshold.pdf: accuracy.by_threshold.tsv
+results/figure.accuracy_by_threshold.pdf: accuracy.by_threshold.R7.tsv accuracy.by_threshold.R9.tsv
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R call_accuracy_by_threshold $^ $@
 

@@ -142,7 +142,7 @@ make_training_plots <- function(training_in, control_in)
 
 get_pore_string_from_filename <- function(filename) {
     require(stringr)
-    return(ifelse(str_count(filename, "r9"), "R9", "R7"))
+    return(ifelse(str_count(filename, fixed("r9", ignore_case=TRUE)), "R9", "R7"))
 }
 
 make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
@@ -451,14 +451,22 @@ TSS_distance_plot_by_chromosome <- function(out_file, ...) {
 #
 #
 #
-call_accuracy_by_threshold <- function(in_file, out_file) {
+load_accuracy_file <- function(filename) {
+    data <- read.table(filename, header=T)
+    pore = get_pore_string_from_filename(filename)
+    data$pore = pore
+    return(data)
+}
+
+call_accuracy_by_threshold <- function(in_file1, in_file2, out_file) {
     require(ggplot2)
     require(grid)
-    data <- read.table(in_file, header=T)
+    data <- rbind(load_accuracy_file(in_file1),
+                  load_accuracy_file(in_file2))
     
     pdf(out_file, 12, 6)
-    p1 <- ggplot(data, aes(threshold, 1 - accuracy)) + geom_line() + xlim(0, 10) + ylim(0, 0.20) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
-    p2 <- ggplot(data, aes(threshold, called)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
+    p1 <- ggplot(data, aes(threshold, 1 - accuracy, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 0.20) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
+    p2 <- ggplot(data, aes(threshold, called, group=pore, color=pore)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
     
     # Add panel labels
     p1 <- p1 + annotation_custom(textGrob(label = "A", x = 0.10, y = 0.95, gp=gpar(fontsize=20)))
@@ -468,12 +476,14 @@ call_accuracy_by_threshold <- function(in_file, out_file) {
     dev.off()
 }
 
-call_accuracy_roc <- function(in_file, out_file) {
+call_accuracy_roc <- function(in_file1, in_file2, out_file) {
     require(ggplot2)
-    data <- read.table(in_file, header=T)
+
+    data <- rbind(load_accuracy_file(in_file1),
+                  load_accuracy_file(in_file2))
     
     pdf(out_file, 6, 6)
-    p1 <- ggplot(data, aes(1 - specificity, recall)) + 
+    p1 <- ggplot(data, aes(1 - specificity, recall, group=pore, color=pore)) + 
         geom_line() + 
         xlim(0, 1) + 
         ylim(0, 1) + 
@@ -591,9 +601,9 @@ if(! interactive()) {
         outfile = args[length(args)]
         TSS_distance_plot_by_chromosome(outfile, as.vector(args[c(-1, -length(args))]))
     } else if(command == "call_accuracy_by_threshold") {
-        call_accuracy_by_threshold(args[2], args[3])
+        call_accuracy_by_threshold(args[2], args[3], args[4])
     } else if(command == "call_accuracy_roc") {
-        call_accuracy_roc(args[2], args[3])
+        call_accuracy_roc(args[2], args[3], args[4])
     } else if(command == "call_accuracy_by_kmer") {
         call_accuracy_by_kmer(args[2], args[3])
     } else if(command == "site_likelihood_distribution") {
