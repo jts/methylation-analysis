@@ -516,6 +516,20 @@ site_likelihood_distribution <- function(out_file, ...) {
         filename = in_files[[1]][[i]]
         data = read.table(filename, header=T)
         data$dataset = make_display_name(filename)
+        type = ""
+        if(str_count(filename, fixed(".pcr."))) {
+            type = "PCR"
+        } else if(str_count(filename, fixed(".pcr_MSssI."))) {
+            type = "PCR+M.SssI"
+        } else if(str_count(filename, fixed(".native."))) {
+            type = "Natural"
+        } else {
+            stop("Cannot infer data type")
+        }
+
+        data$type = type
+        data$pore = get_pore_string_from_filename(filename)
+
         if(is.null(all_data)) {
             all_data = data
         } else {
@@ -525,9 +539,9 @@ site_likelihood_distribution <- function(out_file, ...) {
 
     pdf(out_file, 9, 12)
     p1 <- ggplot(subset(all_data, NumCpGs == 1), aes(LogLikRatio)) + 
-        facet_grid(dataset ~ .) + 
-        geom_histogram(binwidth=0.5, aes(y=(..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..])) +
-        xlim(-15, 15) +
+        facet_grid(type ~ .) + 
+        geom_freqpoly(binwidth=0.5, aes(y=..density.., color=pore, group=pore)) +
+        xlim(-20, 20) +
         xlab("Log likelihood ratio") +
         ylab("Density") +
         global_theme() 

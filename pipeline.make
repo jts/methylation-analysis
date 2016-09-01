@@ -593,7 +593,10 @@ results/figure.methylation_by_TSS_distance_by_chromosome.pdf: $(TSS_INPUT)
 #
 # Site likelihood plot
 #
-results/figure.site_likelihood_distribution.pdf: NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.tsv \
+results/figure.site_likelihood_distribution.pdf: NA12878.pcr.r9.timp.081016.sorted.bam.methyltest.sites.tsv \
+                                                 NA12878.pcr_MSssI.r9.timp.081016.sorted.bam.methyltest.sites.tsv \
+                                                 NA12878.native.r9.merged.sorted.bam.methyltest.sites.tsv \
+                                                 NA12878.pcr.simpson.021616.sorted.bam.methyltest.sites.tsv \
                                                  NA12878.pcr_MSssI.simpson.021016.sorted.bam.methyltest.sites.tsv \
                                                  NA12878.native.merged.sorted.bam.methyltest.sites.tsv
 	mkdir -p results/
