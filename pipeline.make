@@ -174,7 +174,8 @@ TRAINING_REGION="Chromosome:50000-3250000"
 METHYLTRAIN_EXTRA_OPTS = 
 
 # the name of the output model that we use for the human analysis
-TRAINED_MODEL_FOFN=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.fofn
+TRAINED_R7_MODEL_ROOT=ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg
+TRAINED_R9_MODEL_ROOT=ecoli_er2925.pcr_MSssI.r9.timp.061716.alphabet_cpg
 
 # The log-likelihood threshold required to make a call
 CALL_THRESHOLD=2.5
@@ -460,16 +461,45 @@ results/all.training.tables.tex: results/pcr.nucleotide.training.table.tex \
 #
 ##################################################
 
+TRAINED_R7_MODEL_FOFN=trained.R7.methylation.model.fofn
+TRAINED_R9_MODEL_FOFN=trained.R9.methylation.model.fofn
+
+$(TRAINED_R9_MODEL_FOFN): t.007.$(TRAINED_R9_MODEL_ROOT).model \
+                          c.p1.007.$(TRAINED_R9_MODEL_ROOT).model \
+                          c.p2.007.$(TRAINED_R9_MODEL_ROOT).model \
+                          t.007.$(TRAINED_R9_MODEL_ROOT).5mer.model \
+                          c.p1.007.$(TRAINED_R9_MODEL_ROOT).5mer.model \
+                          c.p2.007.$(TRAINED_R9_MODEL_ROOT).5mer.model
+	echo $^ | tr " " "\n" > $@
+
+$(TRAINED_R7_MODEL_FOFN): $(TRAINED_R7_MODEL_ROOT).fofn
+	ln -s $< $@
+
 # Calculate methylation likelihood ratios at every CpG covered by nanopore reads
-%.methyltest.sites.bed %.methyltest.reads.tsv %.methyltest.strand.tsv: % %.bai $(TRAINED_MODEL_FOFN)
-	$(eval TMP_BAM = $<)
-	$(eval TMP_FASTA = $(TMP_BAM:.sorted.bam=.fasta))
-	$(eval TMP_REF = $($(TMP_FASTA)_REFERENCE))
+# We do this with a rule macro to switch the model depending on if the input data is R7 or R9
+define generate-calling-rules
+
+$(eval FASTA=$1)
+$(eval PORE_VERSION=$2)
+$(eval BAM=$(FASTA:.fasta=.sorted.bam))
+$(BAM).methyltest.sites.bed: $(BAM) $(BAM).bai trained.$(PORE_VERSION).methylation.model.fofn
+	$(eval TMP_REF = $($(FASTA)_REFERENCE))
 	nanopolish/nanopolish methyltest  -t $(THREADS) \
-        -m $(TRAINED_MODEL_FOFN) \
-        -b $(TMP_BAM) \
-        -r $(TMP_FASTA) \
+        -m trained.$(PORE_VERSION).methylation.model.fofn \
+        -b $(BAM) \
+        -r $(FASTA) \
         -g $(TMP_REF)
+
+$(BAM).methyltest.reads.tsv: $(BAM).methyltest.sites.bed
+$(BAM).methyltest.strand.tsv: $(BAM).methyltest.sites.bed
+
+endef
+
+# make the rules using the generation function
+all_NA12878_R7=$(call FILTER_OUT,r9,$(all_NA12878))
+all_NA12878_R9=$(call FILTER_IN,r9,$(all_NA12878))
+$(foreach file,$(all_NA12878_R7),$(eval $(call generate-calling-rules,$(file),R7)))
+$(foreach file,$(all_NA12878_R9),$(eval $(call generate-calling-rules,$(file),R9)))
 
 # Convert a site BED file into a tsv file for R
 %.methyltest.sites.tsv: %.methyltest.sites.bed
