@@ -140,6 +140,11 @@ make_training_plots <- function(training_in, control_in)
     dev.off()
 }
 
+get_pore_string_from_filename <- function(filename) {
+    require(stringr)
+    return(ifelse(str_count(filename, "r9"), "R9", "R7"))
+}
+
 make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
 {
     require(grid)
@@ -211,7 +216,7 @@ make_emissions_figure <- function(outfile, ...)
         data_sets[[current_file]] <- load_training_data(current_file, display_name)
 
         # Infer pore type
-        pore = ifelse(str_count(current_file, "r9"), "R9", "R7")
+        pore = get_pore_string_from_filename(current_file)
         data_sets[[current_file]]$pore = pore
 
         # parse model parameters
@@ -248,17 +253,29 @@ make_emissions_figure <- function(outfile, ...)
     dev.off()
 }
 
+load_shift_data <- function(filename)
+{
+    data <- read.table(filename, header=T)
+    data$model = factor(data$model, levels = c("template", "comp.pop1", "comp.pop2"))
+    pore = get_pore_string_from_filename(filename)
+    data$pore = pore
+    return(data)
+}
+
 #
 # Make a plot of the k-mer mean differences by position of the methylated base
 #
-make_mean_shift_by_position_figure <- function(outfile, filename) {
-    data <- read.table(filename, header=T)
-    data$model = factor(data$model, levels = c("template", "comp.pop1", "comp.pop2"))
+make_mean_shift_by_position_figure <- function(outfile, file1, file2) {
+
+    data1 <- load_shift_data(file1)
+    data2 <- load_shift_data(file2)
+
+    all <- rbind(data1, data2)
 
     pdf(outfile)
-    p <- ggplot(data, aes(difference)) + 
+    p <- ggplot(subset(all, model == "template"), aes(difference)) + 
              geom_histogram(binwidth=0.25) + 
-             facet_grid(m_pattern ~ model, scales="free_y") + 
+             facet_grid(m_pattern ~ pore, scales="free_y") + 
              xlim(-8, 8) + 
              global_theme();
     multiplot(p, cols=1)
@@ -564,7 +581,7 @@ if(! interactive()) {
     } else if(command == "make_emissions_figure") {
         make_emissions_figure(args[2], as.vector(args[3:length(args)]))
     } else if(command == "make_mean_shift_by_position_figure") {
-        make_mean_shift_by_position_figure(args[2], args[3])
+        make_mean_shift_by_position_figure(args[2], args[3], args[4])
     } else if(command == "human_cpg_island_plot") {
         human_cpg_island_plot(args[2], args[3], args[4])
     } else if(command == "TSS_distance_plot") {

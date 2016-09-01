@@ -7,14 +7,17 @@ import os
 import math
 import argparse
 from methylation_utils import *
-from methylation_parsers import ONTModel, TrainingSummary
+from methylation_parsers import *
 
 parser = argparse.ArgumentParser( description='Calculate the difference between methyltrain means and ONT models')
 parser.add_argument('--summary', type=str, required=True)
 parser.add_argument('--ont-fofn', type=str, required=True)
 args, files = parser.parse_known_args()
 
-ont_model_set = dict([ (f.rstrip(), ONTModel(f.rstrip())) for f in open(args.ont_fofn) ])
+ont_model_set = dict()
+load_ont_models_from_fofn("ont.alphabet_cpg.R7.fofn", ont_model_set)
+load_ont_models_from_fofn("ont.alphabet_cpg.R9.fofn", ont_model_set)
+
 summary = TrainingSummary(args.summary)
 
 kmer_pattern = ['a', 'b', 'c', 'd', 'e', 'f']

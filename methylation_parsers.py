@@ -104,6 +104,12 @@ class ONTModel:
     def get_num_kmers(self):
         return len(self.kmers)
 
+def load_ont_models_from_fofn(ont_fofn, out_model_set):
+    f = open(ont_fofn)
+    for filename in f:
+        filename = filename.rstrip()
+        out_model_set[filename] = ONTModel(filename)
+
 #
 # Parse a .summary file output by methyltrain
 #

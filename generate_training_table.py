@@ -7,7 +7,7 @@ import os
 import math
 import argparse
 from methylation_utils import *
-from methylation_parsers import ONTModel, TrainingSummary
+from methylation_parsers import *
 
 # define datatypes
 TableRow = namedtuple('TableRow', ['sample', 'treatment', 'pore', 'lab', 'date',
@@ -18,12 +18,6 @@ TableRow = namedtuple('TableRow', ['sample', 'treatment', 'pore', 'lab', 'date',
 def yearmonthday(date):
     assert(len(date) == 6)
     return date[4:6] + date[2:4] + date[0:2]
-
-def load_ont_models_from_fofn(ont_fofn, out_model_set):
-    f = open(ont_fofn)
-    for filename in f:
-        filename = filename.rstrip()
-        out_model_set[filename] = ONTModel(filename)
 
 def print_table_latex(table, treatment, alphabet):
 

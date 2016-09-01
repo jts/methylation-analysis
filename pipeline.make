@@ -412,7 +412,7 @@ results/figure.emissions.pdf: methyltrain.$(PANEL_A_R7_SET).panelA.tsv \
 %.alphabet_cpg.model.summary.delta: %.alphabet_cpg.model.summary
 	python $(SCRIPT_DIR)/generate_kmer_deltas.py --summary $^ --ont-fofn ont.alphabet_cpg.fofn > $@
 
-results/figure.shift_by_position.pdf: methyltrain.ecoli_er2925.pcr_MSssI.timp.021216.alphabet_cpg.model.summary.delta
+results/figure.shift_by_position.pdf: methyltrain.$(TRAINED_R7_MODEL_ROOT).model.summary.delta methyltrain.$(TRAINED_R9_MODEL_ROOT).model.summary.delta
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R make_mean_shift_by_position_figure $@ $^
 
@@ -575,21 +575,18 @@ NA12878.bisulfite.distance_to_TSS.bed: $(BISULFITE_BED) bedtools.version $(TSS_F
 %.bisulfite.distance_to_TSS.table: %.bisulfite.distance_to_TSS.bed
 	python $(SCRIPT_DIR)/calculate_methylation_by_distance.py --type bisulfite -i $^ > $@
 
+# Build the list of datasets to use in the TSS analysis
+# The FILTER_IN rule for pcr intentially includes
+# the MSssI data as well
+TSS_FILES=$(call FILTER_IN,merged,$(all_NA12878)) \
+          $(call FILTER_IN,pcr,$(all_NA12878))
+TSS_INPUT=$(TSS_FILES:.fasta=.methylated_sites.distance_to_TSS.table) NA12878.bisulfite.distance_to_TSS.table
 
-results/figure.methylation_by_TSS_distance.pdf: NA12878.bisulfite.distance_to_TSS.table \
-                                                NA12878.native.merged.methylated_sites.distance_to_TSS.table \
-                                                NA12878.pcr.simpson.021616.methylated_sites.distance_to_TSS.table \
-                                                NA12878.pcr_MSssI.simpson.021016.methylated_sites.distance_to_TSS.table \
-                                                NA12878.pcr.r9.timp.081016.methylated_sites.distance_to_TSS.table \
-                                                NA12878.native.r9.merged.methylated_sites.distance_to_TSS.table
+results/figure.methylation_by_TSS_distance.pdf: $(TSS_INPUT)
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot $^ $@
 
-
-results/figure.methylation_by_TSS_distance_by_chromosome.pdf: NA12878.bisulfite.distance_to_TSS.table \
-                                                              NA12878.native.merged.methylated_sites.distance_to_TSS.table \
-                                                              NA12878.pcr.r9.timp.081016.methylated_sites.distance_to_TSS.table \
-                                                              NA12878.pcr_MSssI.r9.timp.081016.methylated_sites.distance_to_TSS.table
+results/figure.methylation_by_TSS_distance_by_chromosome.pdf: $(TSS_INPUT)
 	mkdir -p results
 	Rscript $(SCRIPT_DIR)/methylation_plots.R TSS_distance_plot_by_chromosome $^ $@
 
