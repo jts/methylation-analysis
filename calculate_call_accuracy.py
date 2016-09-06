@@ -44,7 +44,7 @@ parser.add_argument('--num-sites', type=str, required=False, default=100000)
 args = parser.parse_args()
 
 # Set the range of likelihood thresholds to use
-likelihood_thresholds = numpy.arange(-10, 10.0, 0.25)
+likelihood_thresholds = numpy.arange(-20, 20.0, 0.25)
 
 # Set a single threshold for the k-mer based analysis
 kmer_analysis_threshold = 2.5

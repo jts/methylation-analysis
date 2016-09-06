@@ -512,7 +512,7 @@ call_accuracy_by_threshold <- function(in_file1, in_file2, out_file) {
     
     pdf(out_file, 12, 6)
     p1 <- ggplot(data, aes(threshold, 1 - accuracy, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 0.20) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
-    p2 <- ggplot(data, aes(threshold, called, group=pore, color=pore)) + geom_line() + xlim(0, 10) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
+    p2 <- ggplot(data, aes(threshold, called, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 200000) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
     
     # Add panel labels
     p1 <- p1 + annotation_custom(textGrob(label = "A", x = 0.10, y = 0.95, gp=gpar(fontsize=20)))
@@ -582,6 +582,8 @@ site_likelihood_distribution <- function(out_file, ...) {
             all_data = rbind(all_data, data)
         }
     }
+
+    all_data$type = factor(all_data$type, levels=c("PCR", "PCR+M.SssI", "Natural"))
 
     pdf(out_file, 9, 12)
     p1 <- ggplot(subset(all_data, NumCpGs == 1), aes(LogLikRatio, fill=pore)) + 
