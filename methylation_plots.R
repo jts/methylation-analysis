@@ -193,6 +193,50 @@ make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
     return(p + global_theme())
 }
 
+# http://stackoverflow.com/questions/13649473/add-a-common-legend-for-combined-ggplots
+grid_arrange_shared_legend <- function(..., legend_idx=1) {
+    require(grid)
+    require(gridExtra)
+
+    plots <- list(...)
+    g <- ggplotGrob(plots[[legend_idx]] + theme(legend.position="bottom"))$grobs
+    legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+    lheight <- sum(legend$height)
+    g2 <- grid.arrange(
+          do.call(arrangeGrob, lapply(plots, function(x)
+                 x + theme(legend.position="none"))),
+              legend,
+              ncol = 1,
+              heights = unit.c(unit(1, "npc") - lheight, lheight))
+    return(g2)
+}
+
+grid_arrange_shared_legend_2 <- function(..., ncol = length(list(...)), nrow = 1, legend_idx = 1, position = c("bottom", "right")) {
+    require(grid)
+    require(gridExtra)
+
+    plots <- list(...)
+    position <- match.arg(position)
+    g <- ggplotGrob(plots[[legend_idx]] + theme(legend.position = position))$grobs
+    legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+    lheight <- sum(legend$height)
+    lwidth <- sum(legend$width)
+    gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+    gl <- c(gl, ncol = ncol, nrow = nrow)
+
+    combined <- switch(position,
+                       "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                           legend,
+                           ncol = 2,
+                           heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                      "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                        legend,
+                        ncol = 3,
+                        widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+    grid.newpage()
+    grid.draw(combined)
+}
+
 #
 # Emissions figure - examples of distributions
 #
@@ -240,17 +284,19 @@ make_emissions_figure <- function(outfile, ...)
     panelB_R9_files <- Filter(function(x) { return(str_count(x, "panelB") & str_count(x, "r9")) }, filenames)
     panelC_R9_files <- Filter(function(x) { return(str_count(x, "panelC") & str_count(x, "r9")) }, filenames)
 
-    pdf(outfile, 15, 15)
     panel_A_R7 <- make_panel(panelA_R7_files, data_sets, param_means, param_stdvs, "A")
     panel_B_R7 <- make_panel(panelB_R7_files, data_sets, param_means, param_stdvs, "B")
     panel_C_R7 <- make_panel(panelC_R7_files, data_sets, param_means, param_stdvs, "C")
 
-    panel_A_R9 <- make_panel(panelA_R9_files, data_sets, param_means, param_stdvs, "")
-    panel_B_R9 <- make_panel(panelB_R9_files, data_sets, param_means, param_stdvs, "")
-    panel_C_R9 <- make_panel(panelC_R9_files, data_sets, param_means, param_stdvs, "")
+    panel_A_R9 <- make_panel(panelA_R9_files, data_sets, param_means, param_stdvs, "D")
+    panel_B_R9 <- make_panel(panelB_R9_files, data_sets, param_means, param_stdvs, "E")
+    panel_C_R9 <- make_panel(panelC_R9_files, data_sets, param_means, param_stdvs, "F")
 
-    multiplot(panel_A_R7, panel_A_R9, panel_B_R7, panel_B_R9, panel_C_R7, panel_C_R9, cols=2)
-    dev.off()
+    #multiplot(panel_A_R7, panel_A_R9, panel_B_R7, panel_B_R9, panel_C_R7, panel_C_R9, cols=2)
+    #pdf(outfile, 15, 15)
+    p <- grid_arrange_shared_legend(panel_A_R7, panel_A_R9, panel_B_R7, panel_B_R9, panel_C_R7, panel_C_R9, legend_idx=3, nrow=3)
+    ggsave(outfile, p, height=15, width=12, units="in")
+    #dev.off()
 }
 
 load_shift_data <- function(filename)
