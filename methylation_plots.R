@@ -538,9 +538,9 @@ site_likelihood_distribution <- function(out_file, ...) {
     }
 
     pdf(out_file, 9, 12)
-    p1 <- ggplot(subset(all_data, NumCpGs == 1), aes(LogLikRatio)) + 
+    p1 <- ggplot(subset(all_data, NumCpGs == 1), aes(LogLikRatio, fill=pore)) + 
         facet_grid(type ~ .) + 
-        geom_freqpoly(binwidth=0.5, aes(y=..density.., color=pore, group=pore)) +
+        geom_histogram(binwidth=0.5, aes(y=..density..), position="identity", alpha=0.5) +
         xlim(-20, 20) +
         xlab("Log likelihood ratio") +
         ylab("Density") +

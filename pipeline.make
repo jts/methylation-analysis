@@ -70,7 +70,8 @@ DATA_ROOT=../data
 # Output targets
 #
 .DEFAULT_GOAL := all
-all: all-nucleotide all-cpg all-results-plots all-cancer-normal
+all: all-except-cancer-normal all-cancer-normal
+all-except-cancer-normal: all-nucleotide all-cpg all-results-plots
 
 all-software: pythonlibs.version bedtools.version nanopolish.version samtools.version bwa.version
 all-download: all-software $(BISULFITE_BED) $(HUMAN_REFERENCE) $(ECOLI_REFERENCE) MCF10A.cyto.txt.gz MDAMB231.cyto.txt.gz
@@ -99,7 +100,7 @@ all-island-plots: $(addprefix results/,$(patsubst %.fasta,%.cpg_island_plot.pdf,
 
 all-training-plots: results/figure.emissions.pdf results/figure.shift_by_position.pdf
 
-all-accuracy-plots: results/accuracy_roc.pdf results/figure.accuracy_by_threshold.pdf results/accuracy_by_kmer.pdf results/figure.site_likelihood_distribution.pdf
+all-accuracy-plots: results/figure.accuracy_roc.pdf results/figure.accuracy_by_threshold.pdf results/figure.site_likelihood_distribution.pdf
 
 all-TSS-plots: results/figure.methylation_by_TSS_distance.pdf results/figure.methylation_by_TSS_distance_by_chromosome.pdf 
 
@@ -328,6 +329,11 @@ $(PREFIX).fofn: $(DATASET).fasta $(DATASET).sorted.bam $(DATASET).sorted.bam.bai
 t.006.$(PREFIX).model: $(PREFIX).fofn
 c.p1.006.$(PREFIX).model: $(PREFIX).fofn
 c.p2.006.$(PREFIX).model: $(PREFIX).fofn
+
+# Bit of a hack, should only specify 006/007 models depending on the pore
+t.007.$(PREFIX).model: $(PREFIX).fofn
+c.p1.007.$(PREFIX).model: $(PREFIX).fofn
+c.p2.007.$(PREFIX).model: $(PREFIX).fofn
 methyltrain.$(PREFIX).model.summary: $(PREFIX).fofn
 methyltrain.$(PREFIX).model.round4.events.tsv: $(PREFIX).fofn
 
@@ -623,8 +629,8 @@ accuracy.by_threshold.R9.tsv: $(NA12878_R9_PCR) $(NA12878_R9_PCR_MSSSI)
                                                     --methylated $(NA12878_R9_PCR_MSSSI) \
                                                     --pore R9
 
-accuracy.precision_recall.%: accuracy.by_threshold.%
-accuracy.by_kmer.%: accuracy.by_threshold.%
+accuracy.precision_recall.R7.tsv: accuracy.by_threshold.R7.tsv
+accuracy.precision_recall.R9.tsv: accuracy.by_threshold.R9.tsv
 
 results/figure.accuracy_roc.pdf: accuracy.precision_recall.R7.tsv accuracy.precision_recall.R9.tsv
 	mkdir -p results
