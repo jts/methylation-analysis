@@ -506,6 +506,7 @@ all_NA12878_R7=$(call FILTER_OUT,r9,$(all_NA12878))
 all_NA12878_R9=$(call FILTER_IN,r9,$(all_NA12878))
 $(foreach file,$(all_NA12878_R7),$(eval $(call generate-calling-rules,$(file),R7)))
 $(foreach file,$(all_NA12878_R9),$(eval $(call generate-calling-rules,$(file),R9)))
+$(foreach file,$(all_cancer),$(eval $(call generate-calling-rules,$(file),R7)))
 
 # Convert a site BED file into a tsv file for R
 %.methyltest.sites.tsv: %.methyltest.sites.bed

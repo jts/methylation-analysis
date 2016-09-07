@@ -409,6 +409,14 @@ make_display_name <- function(structured_name) {
 
     sample = fields[1]
     treatment = fields[2]
+    pore = get_pore_string_from_filename(structured_name)
+
+    # R9 filenames have an extra field, when parsing
+    # the lab/date from the filename we may have to offset the index
+    r9_offset = 0
+    if(pore == "R9") {
+        r9_offset = 1
+    }
 
     # Rename treatment
     if(treatment == "pcr_MSssI") {
@@ -425,12 +433,12 @@ make_display_name <- function(structured_name) {
         return(id)
     } else {
         
-        lab = fields[3]
-        date = fields[4]
+        lab = fields[3 + r9_offset]
+        date = fields[4 + r9_offset]
         if(lab == "merged") {
-            return(sprintf("%s (%s)", id, lab))
+            return(sprintf("%s (%s %s)", id, pore, lab))
         } else {
-            return(sprintf("%s (%s-%s)", id, lab, date))
+            return(sprintf("%s (%s %s-%s)", id, pore, lab, date))
         }
     }
 }
