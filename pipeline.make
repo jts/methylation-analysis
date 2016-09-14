@@ -46,13 +46,13 @@ pythonlibs.version:
 # Install bedtools
 bedtools.version:
 	git clone https://github.com/arq5x/bedtools2.git bedtools
-	cd bedtools; make
+	cd bedtools; git checkout v2.26.0; make
 	-cd bedtools; git log | head -1 > ../$@
 
 # Install nanopolish, automatically downloading libhdf5
 nanopolish.version:
 	git clone --recursive https://github.com/jts/nanopolish.git
-	cd nanopolish; git checkout 194cc3faaf; make
+	cd nanopolish; git checkout ea95360; make
 	-cd nanopolish; git log | head -1 > ../$@
 
 #
@@ -656,7 +656,6 @@ MCF10A.cyto.txt.gz:
 
 MDAMB231.cyto.txt.gz:
 	wget http://timplab.org/data/MDAMB231.cyto.txt.gz
-
 
 # Correlation plot
 
