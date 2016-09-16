@@ -148,7 +148,8 @@ get_pore_string_from_filename <- function(filename) {
 make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
 {
     require(grid)
-    palette <- c("red", "blue")
+    #from brewer palette 
+    palette <- c("#a6cee3", "#b2df8a")
 
     # merge datasets
     all_data <- NULL
@@ -175,7 +176,7 @@ make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)
 
     # make the histogram
     p <- ggplot(all_data, aes(transformed_level_mean, fill=dataset)) +
-            geom_histogram(aes(y = ..density..), alpha=0.4, binwidth=0.1, position="identity") +
+            geom_histogram(aes(y = ..density..), alpha=0.7, binwidth=0.1, position="identity") +
             scale_fill_manual(values=palette) +
             xlab("Transformed event level (pA)") +
             ggtitle(paste("Event distribution for k-mer", kmer))
