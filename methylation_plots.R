@@ -434,7 +434,6 @@ make_display_name <- function(structured_name) {
         r9_offset = 1
     }
 
-
     id = str_c(sample, treatment, sep=" ")
 
     if(treatment == "bisulfite") {
@@ -484,38 +483,19 @@ TSS_distance_plot <- function(out_file, ...) {
     require(ggplot2)
 
     all_data = load_all_TSS_data(...)
-    all_data$technology = factor(all_data$technology, levels=c("Nanopore R7", "Nanopore R9", "Bisulfite"))
     autosomes <- subset(all_data, chromosome == "autosomes")
 
     pdf(out_file, 12, 4)
 
-    # Set the positions of the labels
-    label_x = max(all_data$distance) - 20
-    offset_y = 5
-    terminal = subset(autosomes, distance > 2800)
-    natural_label_y = max(subset(terminal, treatment == "Natural" | treatment == "bisulfite")$percent_methylated)
-    pcr_label_y = max(subset(terminal, treatment == "PCR")$percent_methylated)
-    pcr_meth_label_y = max(subset(terminal, treatment == "PCR+M.SssI")$percent_methylated)
-
-    p <- ggplot(autosomes, aes(distance, percent_methylated, group=dataset, color=technology)) +
-            geom_point() +
-            geom_line() +
-            annotate("text", label="PCR+M.SssI", x=label_x, y=pcr_meth_label_y + offset_y) +
-            annotate("text", label="PCR", x=label_x, y=pcr_label_y + offset_y) +
-            annotate("text", label="Natural", x=label_x, y=natural_label_y + offset_y) +
+    p <- ggplot() +
+            geom_line(aes(distance, percent_methylated, group=dataset, color=pore), subset(autosomes, treatment != "bisulfite")) +
+            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment, color=pore), subset(autosomes, treatment != "bisulfite")) +
+            geom_line(aes(distance, percent_methylated), subset(autosomes, treatment == "bisulfite")) +
+            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment), subset(autosomes, treatment == "bisulfite")) +
             xlab("Binned distance to TSS") +
             ylab("Percent methylated") +
             ylim(0, 100) +
-            global_theme()
-
-#    p <- ggplot() +
-#            geom_line(aes(distance, percent_methylated, group=dataset, color=pore), subset(autosomes, treatment != "bisulfite")) +
-#            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment, color=pore), subset(autosomes, treatment != "bisulfite")) +
-#            geom_line(aes(distance, percent_methylated), subset(autosomes, treatment == "bisulfite")) +
-#            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment), subset(autosomes, treatment == "bisulfite")) +
-#            xlab("Binned distance to TSS") +
-#            ylab("Percent methylated") +
-            ylim(0, 100) +
+            palette() +
             global_theme()
     multiplot(p, cols=1)
     dev.off()
@@ -528,16 +508,22 @@ TSS_distance_plot_by_chromosome <- function(out_file, ...) {
 
     #http://stackoverflow.com/questions/19014531/sort-by-chromosome-name
     chrOrder <-paste("chr", c((1:22),"X","Y","M"), sep="")
-    all_data$chromosome = factor(all_data$chromosome, levels=chrOrder, ordered=TRUE)
+    data_except_all = subset(all_data, chromosome != "all" & chromosome != "autosomes")
+    data_except_all$chromosome = factor(data_except_all$chromosome, levels=chrOrder, ordered=TRUE)
     pdf(out_file, 10, 60)
-    p <- ggplot(subset(all_data, chromosome != "all"), aes(distance, percent_methylated, group=dataset, color=dataset)) + 
-            geom_point(size=1) + 
-            geom_line(size=0.1) + 
-            xlab("Binned distance to TSS") + 
-            ylab("Percent methylated") + 
+
+    p <- ggplot() +
+            geom_line(aes(distance, percent_methylated, group=dataset, color=pore), subset(data_except_all, treatment != "bisulfite")) +
+            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment, color=pore), subset(data_except_all, treatment != "bisulfite")) +
+            geom_line(aes(distance, percent_methylated), subset(data_except_all, treatment == "bisulfite")) +
+            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment), subset(data_except_all, treatment == "bisulfite")) +
+            xlab("Binned distance to TSS") +
+            ylab("Percent methylated") +
             ylim(0, 100) +
             facet_grid(chromosome ~ .) +
-            theme_bw()
+            palette() +
+            global_theme()
+
     multiplot(p, cols=1)
     dev.off()
 }
@@ -689,8 +675,14 @@ make_mers <- function(n, alphabet) {
 #
 require(ggplot2)
 
+palette <- function() {
+    return(scale_colour_brewer(type="qual", palette="Dark2"))
+}
 # set the theme all plots will use
-global_theme = theme_bw
+#global_theme = theme_bw
+global_theme <- function() {
+    return(theme_bw())
+}
 
 args <- commandArgs(TRUE)
 command = args[1]
