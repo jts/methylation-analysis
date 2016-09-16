@@ -546,8 +546,14 @@ call_accuracy_by_threshold <- function(in_file1, in_file2, out_file) {
                   load_accuracy_file(in_file2))
 
     pdf(out_file, 12, 6)
-    p1 <- ggplot(data, aes(threshold, 1 - accuracy, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 0.20) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
-    p2 <- ggplot(data, aes(threshold, called, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 200000) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
+    p1 <- ggplot(data, aes(threshold, 1 - accuracy, group=pore, color=pore)) + 
+        geom_line() + xlim(0, 10) + ylim(0, 0.20) + 
+        xlab("Log likelihood ratio threshold") + ylab("Error rate") + 
+        palette() + global_theme()
+    p2 <- ggplot(data, aes(threshold, called, group=pore, color=pore)) + 
+        geom_line() + xlim(0, 10) + ylim(0, 200000) + 
+        xlab("Log likelihood ratio threshold") + ylab("Number of calls") + 
+        palette() + global_theme()
 
     # Add panel labels
     p1 <- p1 + annotation_custom(textGrob(label = "A", x = 0.10, y = 0.95, gp=gpar(fontsize=20)))
@@ -570,6 +576,7 @@ call_accuracy_roc <- function(in_file1, in_file2, out_file) {
         ylim(0, 1) + 
         xlab("False positive rate") + 
         ylab("True positive rate") + 
+        palette() +
         global_theme()
     multiplot(p1, cols=1); 
     dev.off()
