@@ -684,7 +684,7 @@ make_mers <- function(n, alphabet) {
 #
 require(ggplot2)
 
-palette_name = "Dark2"
+palette_name = "Set2"
 palette <- function() {
     return(scale_colour_brewer(type="qual", palette=palette_name))
 }
