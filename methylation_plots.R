@@ -403,12 +403,28 @@ human_cpg_island_plot <- function(bisulfite_file, nanopore_file, out_file) {
 #
 # Distance to TSS analysis
 #
+get_treatment <- function(filename)
+{
+    fields <- str_split(filename, fixed("."))[[1]]
+
+    treatment = fields[2]
+    # Rename treatment
+    if(treatment == "pcr_MSssI") {
+        treatment = "PCR+M.SssI"
+    } else if(treatment == "pcr") {
+        treatment = "PCR"
+    } else if(treatment == "native") {
+        treatment = "natural"
+    }
+    return(treatment);
+}
+
 make_display_name <- function(structured_name) {
     require(stringr)
     fields <- str_split(structured_name, fixed("."))[[1]]
 
     sample = fields[1]
-    treatment = fields[2]
+    treatment = get_treatment(structured_name)
     pore = get_pore_string_from_filename(structured_name)
 
     # R9 filenames have an extra field, when parsing
@@ -418,21 +434,12 @@ make_display_name <- function(structured_name) {
         r9_offset = 1
     }
 
-    # Rename treatment
-    if(treatment == "pcr_MSssI") {
-        treatment = "PCR+M.SssI"
-    } else if(treatment == "pcr") {
-        treatment = "PCR"
-    } else if(treatment == "native") {
-        treatment = "natural"
-    }
 
     id = str_c(sample, treatment, sep=" ")
 
     if(treatment == "bisulfite") {
         return(id)
     } else {
-        
         lab = fields[3 + r9_offset]
         date = fields[4 + r9_offset]
         if(lab == "merged") {
@@ -446,6 +453,15 @@ make_display_name <- function(structured_name) {
 load_distance_data <- function(filename, tag) {
     data <- read.table(filename, header=T)
     data$dataset = make_display_name(filename)
+    treatment = get_treatment(filename)
+    data$treatment = treatment
+    if(treatment == "bisulfite") {
+        data$pore = ""
+        data$technology = "Bisulfite"
+    } else {
+        data$pore = get_pore_string_from_filename(filename)
+        data$technology = str_c("Nanopore ", get_pore_string_from_filename(filename))
+    }
     return(data)
 }
 
@@ -466,15 +482,39 @@ load_all_TSS_data <- function(...) {
 
 TSS_distance_plot <- function(out_file, ...) {
     require(ggplot2)
- 
-    all_data = load_all_TSS_data(...)   
+
+    all_data = load_all_TSS_data(...)
+    all_data$technology = factor(all_data$technology, levels=c("Nanopore R7", "Nanopore R9", "Bisulfite"))
+    autosomes <- subset(all_data, chromosome == "autosomes")
 
     pdf(out_file, 12, 4)
-    p <- ggplot(subset(all_data, chromosome == "autosomes"), aes(distance, percent_methylated, group=dataset, color=dataset)) +
-            geom_point(size=1) + 
-            geom_line(size=0.1) + 
-            xlab("Binned distance to TSS") + 
-            ylab("Percent methylated") + 
+
+    # Set the positions of the labels
+    label_x = max(all_data$distance) - 20
+    offset_y = 5
+    terminal = subset(autosomes, distance > 2800)
+    natural_label_y = max(subset(terminal, treatment == "Natural" | treatment == "bisulfite")$percent_methylated)
+    pcr_label_y = max(subset(terminal, treatment == "PCR")$percent_methylated)
+    pcr_meth_label_y = max(subset(terminal, treatment == "PCR+M.SssI")$percent_methylated)
+
+    p <- ggplot(autosomes, aes(distance, percent_methylated, group=dataset, color=technology)) +
+            geom_point() +
+            geom_line() +
+            annotate("text", label="PCR+M.SssI", x=label_x, y=pcr_meth_label_y + offset_y) +
+            annotate("text", label="PCR", x=label_x, y=pcr_label_y + offset_y) +
+            annotate("text", label="Natural", x=label_x, y=natural_label_y + offset_y) +
+            xlab("Binned distance to TSS") +
+            ylab("Percent methylated") +
+            ylim(0, 100) +
+            global_theme()
+
+#    p <- ggplot() +
+#            geom_line(aes(distance, percent_methylated, group=dataset, color=pore), subset(autosomes, treatment != "bisulfite")) +
+#            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment, color=pore), subset(autosomes, treatment != "bisulfite")) +
+#            geom_line(aes(distance, percent_methylated), subset(autosomes, treatment == "bisulfite")) +
+#            geom_point(aes(distance, percent_methylated, group=dataset, shape=treatment), subset(autosomes, treatment == "bisulfite")) +
+#            xlab("Binned distance to TSS") +
+#            ylab("Percent methylated") +
             ylim(0, 100) +
             global_theme()
     multiplot(p, cols=1)
@@ -517,11 +557,11 @@ call_accuracy_by_threshold <- function(in_file1, in_file2, out_file) {
     require(grid)
     data <- rbind(load_accuracy_file(in_file1),
                   load_accuracy_file(in_file2))
-    
+
     pdf(out_file, 12, 6)
     p1 <- ggplot(data, aes(threshold, 1 - accuracy, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 0.20) + xlab("Log likelihood ratio threshold") + ylab("Error rate") + global_theme()
     p2 <- ggplot(data, aes(threshold, called, group=pore, color=pore)) + geom_line() + xlim(0, 10) + ylim(0, 200000) + xlab("Log likelihood ratio threshold") + ylab("Number of calls") + global_theme()
-    
+
     # Add panel labels
     p1 <- p1 + annotation_custom(textGrob(label = "A", x = 0.10, y = 0.95, gp=gpar(fontsize=20)))
     p2 <- p2 + annotation_custom(textGrob(label = "B", x = 0.10, y = 0.95, gp=gpar(fontsize=20)))
