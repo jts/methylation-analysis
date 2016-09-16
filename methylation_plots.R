@@ -626,6 +626,7 @@ site_likelihood_distribution <- function(out_file, ...) {
         xlim(-20, 20) +
         xlab("Log likelihood ratio") +
         ylab("Density") +
+        palette_fill() +
         global_theme() 
 
     multiplot(p1, cols=1); 
@@ -675,8 +676,13 @@ make_mers <- function(n, alphabet) {
 #
 require(ggplot2)
 
+palette_name = "Dark2"
 palette <- function() {
-    return(scale_colour_brewer(type="qual", palette="Dark2"))
+    return(scale_colour_brewer(type="qual", palette=palette_name))
+}
+
+palette_fill <- function() {
+    return(scale_fill_brewer(type="qual", palette=palette_name))
 }
 # set the theme all plots will use
 #global_theme = theme_bw
