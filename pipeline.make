@@ -490,11 +490,11 @@ $(eval PORE_VERSION=$2)
 $(eval BAM=$(FASTA:.fasta=.sorted.bam))
 $(BAM).methyltest.sites.bed: $(BAM) $(BAM).bai trained.$(PORE_VERSION).methylation.model.fofn
 	$(eval TMP_REF = $($(FASTA)_REFERENCE))
-	nanopolish/nanopolish methyltest  -t $(THREADS) \
+	/usr/bin/time -v nanopolish/nanopolish methyltest  -t $(THREADS) \
         -m trained.$(PORE_VERSION).methylation.model.fofn \
         -b $(BAM) \
         -r $(FASTA) \
-        -g $(TMP_REF)
+        -g $(TMP_REF) 2> $(BAM).methlytest.stderr
 
 $(BAM).methyltest.reads.tsv: $(BAM).methyltest.sites.bed
 $(BAM).methyltest.strand.tsv: $(BAM).methyltest.sites.bed

@@ -142,7 +142,7 @@ make_training_plots <- function(training_in, control_in)
 
 get_pore_string_from_filename <- function(filename) {
     require(stringr)
-    return(ifelse(str_count(filename, fixed("r9", ignore_case=TRUE)), "R9", "R7"))
+    return(ifelse(str_count(filename, fixed("r9", ignore_case=TRUE)), "R9", "R7.3"))
 }
 
 make_panel <- function(names, data_sets, param_means, param_stdvs, panel_label)

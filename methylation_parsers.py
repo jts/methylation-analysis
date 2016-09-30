@@ -134,7 +134,7 @@ class TrainingSummary:
         else:
             assert(len(fn_fields) == 8)
             # r7 files don't have the pore field
-            self.pore = "r7"
+            self.pore = "r7.3"
 
         # R9 files have these fields offset by 1 to account for the pore string
         self.lab = fn_fields[3 + is_r9_file]
