@@ -52,7 +52,7 @@ bedtools.version:
 # Install nanopolish, automatically downloading libhdf5
 nanopolish.version:
 	git clone --recursive https://github.com/jts/nanopolish.git
-	cd nanopolish; git checkout ea95360; make
+	cd nanopolish; git checkout 4533516; make
 	-cd nanopolish; git log | head -1 > ../$@
 
 #
