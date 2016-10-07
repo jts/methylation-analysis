@@ -19,13 +19,15 @@ load_bsseq <- function(cytoreports) {
     samps=gsub("cyto.txt.*", "bisulfite", samps)
 
     samps=toupper(samps)
+
+    methobj=read.bismark(files=cytoreports, sampleNames=samps, rmZeroCov=T, fileType="cytosineReport")
     
-    methobj=foreach(i=1:length(cytoreports), .combine=combine) %do% {
-        single=read.bismark(files=cytoreports[i], sampleNames=samps[i], rmZeroCov=T, fileType="cytosineReport")
-        ##Bug workaround
-        sampleNames(single)=samps[i]
-        single
-    }
+    #methobj=foreach(i=1:length(cytoreports), .combine=combine) %do% {
+    #    single=read.bismark(files=cytoreports[i], sampleNames=samps[i], rmZeroCov=T, fileType="cytosineReport")
+    #    ##Bug workaround
+    #    sampleNames(single)=samps[i]
+    #    single
+    #}
 
 }
 
@@ -79,9 +81,9 @@ region.sort.filter <- function(methobj, reg, cthresh=10, diff.thresh=.2, regout=
     write.table(reg.bedout, file=gzfile(regout), quote=F, sep="\t", row.names=F, col.names=F)
 }
 
-
-corr.plot <- function(methobj, cthresh=5, plotname="corr.pdf") {
-    ##Add colors for level of coverage
+corr.plot <- function(methobj, cthresh=10, plotname="corr.pdf") {
+    library(ggExtra)
+    
 
     ##Assuming two samples only in bsseq
     methobj=methobj[,1:2]
@@ -97,33 +99,24 @@ corr.plot <- function(methobj, cthresh=5, plotname="corr.pdf") {
     ##Get coverage of lesser (probably nanopore) data
     enough.meth$mincov=apply(basecov[enough.cov,], 1, min)
 
-    ##Bin to threshold, threshold+5, threshold +10 (5, 10, 15)
-    plus0=enough.meth$mincov>=(cthresh)&enough.meth$mincov<(cthresh+5)
-    plus5=enough.meth$mincov>=(cthresh+5)&enough.meth$mincov<(cthresh+10)
-    plus10=enough.meth$mincov>=(cthresh+10)
-    
     ##Get correlation value
-    corval=c(cor(enough.meth[plus0,1], enough.meth[plus0,2]),
-             cor(enough.meth[plus5,1], enough.meth[plus5,2]),
-             cor(enough.meth[plus10,1], enough.meth[plus10,2]))
+    corval=cor(enough.meth[,1], enough.meth[,2])
                           
-    cov.levels=c(paste0(cthresh, "-", cthresh+5, ": R=",format(corval[1], digits=2)),
-                 paste0(cthresh+5, "-", cthresh+10, ": R=",format(corval[2], digits=2)),
-                 paste0(">", cthresh+10, "X", ": R=", format(corval[3], digits=2)))
+    cor.title=paste0(">", cthresh, "X: R=",format(corval, digits=2))
 
-    ##Plot with different colors and titles for coverage 
-    enough.meth$covcol=cov.levels[1]
-    enough.meth$covcol[plus5]=cov.levels[2]
-    enough.meth$covcol[plus10]=cov.levels[3]
-    enough.meth$covcol=factor(enough.meth$covcol, levels=cov.levels)
+    ##Difference
+    enough.meth$mdiff=enough.meth[,1]-enough.meth[,2]
     
-    pdf(plotname)
-    print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2], color="covcol"))+geom_point(alpha=.4, show.legend=F)+theme_bw()+
-          ggtitle("Correlation: ")+
-          guides(col=guide_legend(title="Coverage range"))+
-          facet_wrap(~covcol, nrow=2, ncol=2))
-    dev.off()
+    pdf(plotname, useDingbats=F)    
+    vs.scat=ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y=colnames(enough.meth)[2]))+geom_point(alpha=.4, show.legend=F)+theme_bw()+
+          ggtitle(paste0("Correlation: ", cor.title))
+    print(ggMarginal(vs.scat, type="histogram", margins="both"))
 
+    print(ggplot(enough.meth, aes_string(x=colnames(enough.meth)[1], y="mdiff"))+geom_point(alpha=.4, show.legend=F)+geom_smooth(method="loess")+theme_bw()+
+          ggtitle(paste0("Correlation: ", cor.title)))
+          
+    dev.off()
+    
 }
 
 filt.cgs <- function(methobj, cthresh=5) {
@@ -141,7 +134,7 @@ plot.meth.reg <- function(methobj, this.reg, plotcov=F, plotdiff=F, ns=10, h=500
     idx=overlapsAny(granges(methobj), this.reg)
 
     this.obj=methobj[idx,]
-
+    
     if (dim(this.obj)[1]>0) {
         this.obj=BSmooth(this.obj, ns=ns, h=h, verbose=F)
         
@@ -150,15 +143,21 @@ plot.meth.reg <- function(methobj, this.reg, plotcov=F, plotdiff=F, ns=10, h=500
         meth=data.frame(coord=start(coord), getMeth(this.obj, type="raw", what="perBase"))
         sm.meth=data.frame(coord=start(coord), getMeth(this.obj, type="smooth", what="perBase"))        
         
-        mel.meth=melt(meth, value.name="meth", variable.name="sample", id.vars="coord")
-        mel.smooth=melt(sm.meth, value.name="meth", variable.name="sample", id.vars="coord")
+        mel.meth=melt(meth, value.name="meth", variable.name="sid", id.vars="coord")
+        mel.smooth=melt(sm.meth, value.name="meth", variable.name="sid", id.vars="coord")
         
+        ##Get samples and analysis type split out
+        mel.meth$sample=sapply(strsplit(as.character(mel.meth$sid), split="\\."), head, 1)
+        mel.meth$tech=sapply(strsplit(as.character(mel.meth$sid), split="\\."), tail, 1)
+
+        mel.smooth$sample=sapply(strsplit(as.character(mel.smooth$sid), split="\\."), head, 1)
+        mel.smooth$tech=sapply(strsplit(as.character(mel.smooth$sid), split="\\."), tail, 1)
         
         mel.meth=mel.meth[!is.na(mel.meth$meth),]
         mel.smooth=mel.smooth[!is.na(mel.smooth$meth),]
         
-        print(ggplot(mel.meth, aes(x=coord, y=meth, color=sample))+geom_point(alpha=.4)+
-              geom_line(data=mel.smooth)+
+        print(ggplot(mel.meth, aes(x=coord, y=meth, color=sample, linetype=tech, shape=tech))+geom_point(alpha=.4)+
+              geom_line(data=mel.smooth)+facet_wrap(~tech, ncol=1)+
               theme_bw()+labs(title=paste0("Methylation ", i, ": ", as.character(seqnames(this.reg[1]))))+
               xlab("Coordinate")+ylab("Percent Methylated")+
               guides(col=guide_legend(label.position="bottom", nrow=2))+theme(legend.position="bottom"))
@@ -187,15 +186,20 @@ plot.meth.reg <- function(methobj, this.reg, plotcov=F, plotdiff=F, ns=10, h=500
         if (plotcov) {
             ##Get coverage
             cov=data.frame(coord=start(coord), getCoverage(this.obj, type="Cov", what="perBase"))
-            mel.cov=melt(cov, value.name="cov", variable.name="sample", id.vars="coord")
+            mel.cov=melt(cov, value.name="cov", variable.name="sid", id.vars="coord")
+
+            mel.cov$sample=sapply(strsplit(as.character(mel.cov$sid), split="\\."), head, 1)
+            mel.cov$tech=sapply(strsplit(as.character(mel.cov$sid), split="\\."), tail, 1)
+
+            
             ##Get avg coverage for regions
             colMeans(cov[,2:dim(cov)[2]])
             covrep=paste(format(colMeans(cov[,2:dim(cov)[2]]), digits=2), collapse=";")
             
-            print(ggplot(mel.cov, aes(x=coord, y=cov, color=sample))+geom_point(alpha=.4)+
+            print(ggplot(mel.cov, aes(x=coord, y=cov, color=sample, linetype=tech, shape=tech))+geom_point(alpha=.4)+
                   theme_bw()+labs(title=paste0("Coverage ", i, ": ", covrep))+
                   guides(col=guide_legend(label.position="bottom", nrow=2))+theme(legend.position="bottom")+
-                  facet_wrap(~sample, ncol=1,scale="free_y"))
+                  facet_wrap(~tech, ncol=1,scale="free_y"))
         }
         
         
@@ -205,7 +209,7 @@ plot.meth.reg <- function(methobj, this.reg, plotcov=F, plotdiff=F, ns=10, h=500
 
 
 plot.strand <- function(strand.loc, this.reg, called.only=T) {
-### Plot strand data
+### Plot strand data; called.only shows the ones with a confident call only
 
     if (!called.only) {
         print(ggplot(strand.loc, aes(x=start, y=uid, color=factor(meth), group=uid))+geom_point(alpha=.5)+theme_bw()+
@@ -223,6 +227,26 @@ plot.strand <- function(strand.loc, this.reg, called.only=T) {
     
 }
 
+strand.loglik.hist <- function(strand.loc, highlight) {
+    ##Plot distribution of loglik ratio per strand, highlighting specific strands
+
+    strand.loc$col="blue"
+    strand.loc$col[strand.loc$readix %in% highlight]="red"
+
+
+    ##Remove uncalled CGs
+    strand.loc=strand.loc[strand.loc$meth!=0,]
+    
+    print(ggplot(strand.loc, aes(x=loglikratio, color=col, group=readix))+theme_bw()+
+          facet_wrap(~samp, ncol=1)+
+          geom_density())
+
+    print(ggplot(strand.loc, aes(x=loglikratio, color=col, group=readix))+theme_bw()+
+          facet_wrap(~samp, ncol=1)+
+          geom_freqpoly())
+
+}
+    
 
 
 args=commandArgs(TRUE)
@@ -234,7 +258,7 @@ if(! interactive()) {
     if(command == "correlation") {        
         cytoreports=args[c(-1, -length(args))]
         methobj=load_bsseq(cytoreports)
-        corr.plot(methobj, cthresh=5, plotname=args[length(args)])
+        corr.plot(methobj, cthresh=10, plotname=args[length(args)])
     } else if(command == "best_regions") {
 
         reg.gr=load_bed(args[2]) 
@@ -252,7 +276,7 @@ if(! interactive()) {
         methobj=load_bsseq(cytoreports)
 
 
-        pdf(args[length(args)], height=8.5, width=11)                                        
+        pdf(args[length(args)], height=8.5, width=11, useDingbats=F) 
         
         for (i in 1:length(reg.gr)) {
             plot.meth.reg(methobj, reg.gr[i], h=750, ns=40, plotcov=T)
@@ -267,7 +291,7 @@ if(! interactive()) {
         cytoreports=args[c(-1, -2, -length(args))]
         methobj=load_bsseq(cytoreports)
 
-        pdf(args[length(args)], height=8.5, width=11)                                        
+        pdf(args[length(args)], height=8.5, width=11, useDingbats=F)
         
         for (i in 1:length(reg.gr)) {
             plot.meth.reg(methobj, reg.gr[i], h=750, ns=40, plotcov=T, plotdiff=T)
@@ -285,7 +309,7 @@ if(! interactive()) {
         
         meth.strand=load_strand(pfiles)
                 
-        pdf(args[length(args)], height=8.5, width=11)
+        pdf(args[length(args)], height=8.5, width=11, useDingbats=F)
 
         for (i in 1:length(reg.gr)) {
             ##Filter region
