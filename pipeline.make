@@ -104,7 +104,7 @@ all-accuracy-plots: results/figure.accuracy_roc.pdf results/figure.accuracy_by_t
 
 all-TSS-plots: results/figure.methylation_by_TSS_distance.pdf results/figure.methylation_by_TSS_distance_by_chromosome.pdf 
 
-all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots results/all.training.tables.tex
+all-results-plots: all-accuracy-plots all-island-plots all-TSS-plots all-training-plots results/all.training.tables.tex results/accuracy.table.R7.tex results/accuracy.table.R9.tex
 
 all-cancer-normal: results/mcf10a.bsnanocorr.pdf results/mdamb231.bsnanocorr.pdf results/cn.region.plot.pdf results/cn.strand.plot.pdf
 
@@ -632,6 +632,13 @@ accuracy.by_threshold.R9.tsv: $(NA12878_R9_PCR) $(NA12878_R9_PCR_MSSSI)
 
 accuracy.precision_recall.R7.tsv: accuracy.by_threshold.R7.tsv
 accuracy.precision_recall.R9.tsv: accuracy.by_threshold.R9.tsv
+
+accuracy.table.R7.tex: accuracy.by_threshold.R7.tsv
+accuracy.table.R9.tex: accuracy.by_threshold.R9.tsv
+
+results/accuracy.table.%.tex: accuracy.table.%.tex
+	mkdir -p results
+	cp $^ $@
 
 results/figure.accuracy_roc.pdf: accuracy.precision_recall.R7.tsv accuracy.precision_recall.R9.tsv
 	mkdir -p results

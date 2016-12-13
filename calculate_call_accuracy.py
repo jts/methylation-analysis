@@ -27,7 +27,7 @@ def sample_sites(filename, is_methylated):
         # only use well-isolated singleton CpGs in this analysis
         if mt_record.num_cpgs != 1:
             continue
-        
+
         assert(mt_record.sequence.count("CG") == 1)
         cg_position = mt_record.sequence.find("CG")
         context = mt_record.sequence[0:cg_position]
@@ -56,6 +56,50 @@ methylated_sites = sample_sites(args.methylated, True)
 all_sites = methylated_sites + unmethylated_sites
 
 #
+# Accuracy contingency table
+#
+
+true_methylated = "TrueMethylated"
+true_not_methylated = "TrueNotMethylated"
+called_methylated = "CalledMethylated"
+called_not_methylated = "CalledNotMethylated"
+
+table_data = dict()
+for s in all_sites:
+    truth_tag = true_methylated if s.is_true_methylated else true_not_methylated
+    call_tag = called_methylated if s.loglik_ratio > 0 else called_not_methylated
+    if truth_tag not in table_data:
+        table_data[truth_tag] = dict()
+    if call_tag not in table_data[truth_tag]:
+        table_data[truth_tag][call_tag] = 0
+    table_data[truth_tag][call_tag] += 1
+
+table_spec = """ \\begin{tabular}{ |c c|c|c| }
+\hline
+ & & \multicolumn{2}{|c|}{Called} \\\\ \cline{3-4}
+ & & Methylated & Not Methylated  \\\\ \hline
+ \multicolumn{1}{ |c  }{\multirow{2}{*}{Truth} } &
+ \multicolumn{1}{ |c| }{Methylated} & %d & %d \\\\ \cline{2-4}
+ \multicolumn{1}{ |c  }{}                        &
+ \multicolumn{1}{ |c| }{Not Methylated} & %d & %d \\\\ \cline{1-4}
+ \end{tabular} """
+
+table_out = table_spec % (table_data[true_methylated][called_methylated],
+                          table_data[true_methylated][called_not_methylated],
+                          table_data[true_not_methylated][called_methylated],
+                          table_data[true_not_methylated][called_not_methylated])
+
+caption_str = "Contingency table for the positive and negative control accuracy assessment for %s data" % (args.pore)
+
+table_writer = open("accuracy.table.%s.tex" % (args.pore), 'w')
+table_writer.write(r'\begin{table}[h]' + "\n")
+table_writer.write(r'\begin{adjustbox}{center}' + "\n")
+table_writer.write(table_out + "\n")
+table_writer.write(r'\end{adjustbox}' + "\n")
+table_writer.write(r'\caption{' + caption_str + '}' + "\n")
+table_writer.write(r'\end{table}' + "\n")
+
+#
 # Accuracy by kmer context
 #
 
@@ -65,7 +109,7 @@ for s in all_sites:
     # skip sites below the calling threshold
     if abs(s.loglik_ratio) < kmer_analysis_threshold:
         continue
-    
+
     curr_context = s.context[len(s.context) - context_length:]
     if curr_context not in kmer_stats:
         kmer_stats[curr_context] = KmerStats()
@@ -79,6 +123,7 @@ for kmer in kmer_stats:
     result = kmer_stats[kmer]
     kmer_writer.write("%s\t%d\t%d\t%.3f\n" % (kmer, result.called, result.correct, float(result.correct) / result.called))
 kmer_writer.close()
+
 #
 # Accuracy by liklihood threshold
 #
